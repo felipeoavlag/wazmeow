@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"wazmeow/internal/app"
+	"wazmeow/internal/container"
 	"wazmeow/pkg/logger"
 
 	"github.com/lib/pq"
@@ -18,7 +18,7 @@ import (
 
 // Server representa o servidor HTTP da aplicação
 type Server struct {
-	container  *app.DependencyContainer
+	container  *container.Container
 	httpServer *http.Server
 }
 
@@ -28,7 +28,7 @@ func NewServer() (*Server, error) {
 	sqlstore.PostgresArrayWrapper = pq.Array
 
 	// Criar container com todas as dependências
-	container, err := app.NewDependencyContainer()
+	container, err := container.New()
 	if err != nil {
 		return nil, fmt.Errorf("erro ao criar container: %w", err)
 	}
@@ -38,10 +38,10 @@ func NewServer() (*Server, error) {
 
 	// Criar servidor HTTP
 	httpServer := &http.Server{
-		Addr:         container.Config.GetServerAddress(),
+		Addr:         container.GetConfig().GetServerAddress(),
 		Handler:      router,
-		ReadTimeout:  container.Config.Server.ReadTimeout,
-		WriteTimeout: container.Config.Server.WriteTimeout,
+		ReadTimeout:  container.GetConfig().Server.ReadTimeout,
+		WriteTimeout: container.GetConfig().Server.WriteTimeout,
 	}
 
 	return &Server{
@@ -106,7 +106,7 @@ func (s *Server) shutdown() error {
 
 // printStartupInfo exibe informações sobre a inicialização do servidor
 func (s *Server) printStartupInfo() {
-	cfg := s.container.Config
+	cfg := s.container.GetConfig()
 
 	fmt.Printf("🚀 WazMeow API Server\n")
 	fmt.Printf("=====================\n")
@@ -119,6 +119,6 @@ func (s *Server) printStartupInfo() {
 }
 
 // GetContainer retorna o container de dependências (útil para testes)
-func (s *Server) GetContainer() *app.DependencyContainer {
+func (s *Server) GetContainer() *container.Container {
 	return s.container
 }

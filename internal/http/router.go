@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"wazmeow/internal/app"
+	"wazmeow/internal/container"
 	"wazmeow/internal/http/handlers"
 
 	"github.com/go-chi/chi/v5"
@@ -14,7 +14,7 @@ import (
 )
 
 // NewRouter cria um novo roteador HTTP usando use cases
-func NewRouter(container *app.DependencyContainer) http.Handler {
+func NewRouter(container *container.Container) http.Handler {
 	r := chi.NewRouter()
 
 	// Middlewares
@@ -46,15 +46,15 @@ func NewRouter(container *app.DependencyContainer) http.Handler {
 
 	// Criar handler de sessões com use cases
 	sessionHandler := handlers.NewSessionHandler(
-		container.CreateSessionUC,
-		container.ConnectSessionUC,
-		container.ListSessionsUC,
-		container.GetQRCodeUC,
-		container.DeleteSessionUC,
-		container.LogoutSessionUC,
-		container.PairPhoneUC,
-		container.GetSessionInfoUC,
-		container.SetProxyUC,
+		container.GetCreateSessionUseCase(),
+		container.GetConnectSessionUseCase(),
+		container.GetListSessionsUseCase(),
+		container.GetGetQRCodeUseCase(),
+		container.GetDeleteSessionUseCase(),
+		container.GetLogoutSessionUseCase(),
+		container.GetPairPhoneUseCase(),
+		container.GetGetSessionInfoUseCase(),
+		container.GetSetProxyUseCase(),
 	)
 
 	// Rotas de sessões
