@@ -14,7 +14,11 @@ Uma API REST completa para gerenciar sessões do WhatsApp usando Go e a bibliote
 - ✅ Event handlers completos para mensagens, presença, confirmações de leitura
 - ✅ Reconexão automática de sessões na inicialização
 - ✅ Gerenciamento de mídia (imagens, áudios, vídeos, documentos)
-- ✅ Sistema de webhooks para eventos
+- ✅ Sistema completo de webhooks com payload bruto
+- ✅ Filtros de eventos configuráveis
+- ✅ Sistema de retry e circuit breaker
+- ✅ Rate limiting por sessão
+- ✅ Métricas de performance
 - ✅ Graceful shutdown com desconexão de todas as sessões
 
 ## 🏗️ Tecnologias
@@ -67,6 +71,132 @@ A implementação do WhatsApp foi baseada no arquivo de referência `@reference/
 | POST   | `/sessions/{sessionID}/pairphone`             | Emparelha um telefone com a sessão                                      |
 | POST   | `/sessions/{sessionID}/proxy/set`             | Configura proxy para a sessão                                           |
 | GET    | `/health`                                     | Health check da API                                                      |
+
+### 🔗 Endpoints de Webhook
+
+| Método | Endpoint                                      | Descrição                                                                 |
+|--------|-----------------------------------------------|--------------------------------------------------------------------------|
+| POST   | `/sessions/{sessionID}/webhook`               | Configura webhook para receber eventos da sessão                        |
+| GET    | `/sessions/{sessionID}/webhook`               | Obtém configuração atual do webhook                                     |
+| PUT    | `/sessions/{sessionID}/webhook`               | Atualiza configuração do webhook (ativar/desativar)                     |
+| DELETE | `/sessions/{sessionID}/webhook`               | Remove configuração do webhook                                          |
+| POST   | `/sessions/{sessionID}/webhook/test`          | Testa conectividade do webhook                                          |
+| GET    | `/webhook/events`                             | Lista eventos suportados e grupos disponíveis                          |
+
+## 🔗 Sistema de Webhooks
+
+O WazMeow possui um sistema completo de webhooks que permite receber eventos do WhatsApp em tempo real.
+
+### ✨ Características
+
+- **Payload Bruto**: Eventos enviados exatamente como vêm do whatsmeow
+- **Filtros Configuráveis**: Escolha quais eventos receber
+- **Sistema de Retry**: Tentativas automáticas com backoff exponencial
+- **Circuit Breaker**: Proteção contra URLs com falhas consecutivas
+- **Rate Limiting**: Controle de taxa por sessão
+- **Métricas**: Monitoramento completo de performance
+
+### 📝 Configuração Rápida
+
+```bash
+# Configurar webhook para receber todos os eventos
+curl -X POST http://localhost:8080/sessions/minha-sessao/webhook \
+  -H "Content-Type: application/json" \
+  -d '{
+    "webhook": "http://localhost:8090/webhook",
+    "events": ["*"]
+  }'
+```
+
+### 🧪 Testando Webhooks
+
+O ambiente de desenvolvimento inclui um webhook-tester para facilitar os testes:
+
+```bash
+# Iniciar o ambiente de desenvolvimento
+docker-compose up -d
+
+# O webhook-tester estará disponível em:
+# http://localhost:8090
+```
+
+**URLs úteis para desenvolvimento:**
+- **Webhook Tester**: http://localhost:8090 (para testar webhooks)
+- **DBGate**: http://localhost:3000 (administração de banco)
+- **WazMeow API**: http://localhost:8080 (API principal)
+
+### 📋 Eventos Disponíveis
+
+- **Conexão**: `connected`, `disconnected`, `logged_out`, `qr`, `pair_success`
+- **Mensagens**: `message`, `receipt`
+- **Presença**: `presence`, `chatpresence`
+- **Grupos**: `groupinfo`, `joinedgroup`
+- **Mídia**: `picture`
+- **Chamadas**: `calloffer`, `callaccept`, `callterminate`
+
+### 📖 Documentação Completa
+
+Para documentação detalhada sobre webhooks, consulte: [docs/webhooks.md](docs/webhooks.md)
+
+Para exemplo de implementação, veja: [examples/webhook_server.js](examples/webhook_server.js)
+
+## 📚 Documentação Swagger
+
+A API WazMeow inclui documentação Swagger completa e interativa para todos os endpoints.
+
+### 🌐 Acessar Documentação
+
+1. **Inicie o servidor**:
+   ```bash
+   go run cmd/server/main.go
+   ```
+
+2. **Acesse a interface Swagger UI**:
+   ```
+   http://localhost:8080/swagger/
+   ```
+
+### 🔧 Gerar Documentação
+
+Para gerar ou atualizar a documentação Swagger:
+
+```bash
+# Usando o script
+./scripts/generate-docs.sh
+
+# Ou usando o Makefile
+make swagger-gen
+
+# Ou manualmente
+swag init -g cmd/server/main.go -o docs/ --parseDependency --parseInternal
+```
+
+### 📋 Comandos Make Disponíveis
+
+```bash
+make swagger-gen     # Gera documentação Swagger
+make swagger-serve   # Gera documentação e inicia servidor
+make swagger-clean   # Remove arquivos de documentação gerados
+```
+
+### 📖 Funcionalidades da Documentação
+
+- ✅ **Interface Interativa**: Teste todos os endpoints diretamente no navegador
+- ✅ **Esquemas Completos**: Documentação detalhada de todos os DTOs e entidades
+- ✅ **Exemplos de Uso**: Exemplos práticos para cada endpoint
+- ✅ **Validações**: Documentação de todas as validações de entrada
+- ✅ **Códigos de Resposta**: Documentação completa de respostas de sucesso e erro
+- ✅ **Tags Organizadas**: Endpoints organizados por funcionalidade (sessions, messages, health)
+
+### 🔗 Endpoints Documentados
+
+- **Sessions**: Criação, listagem, conexão, logout, QR code, emparelhamento, proxy
+- **Messages**:
+  - **Básicas**: Texto, mídia genérica
+  - **Específicas**: Imagem, áudio, vídeo, documento, sticker
+  - **Interativas**: Localização, contato, botões, lista, enquete
+  - **Operações**: Editar, deletar, reagir
+- **Health**: Verificação de saúde da API
 
 ## 🛠️ Instalação e Execução
 

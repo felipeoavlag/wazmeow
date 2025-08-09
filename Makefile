@@ -9,7 +9,7 @@ SERVER_CMD=cmd/server/main.go
 SETUP_CMD=cmd/setup/main.go
 
 # Comandos padrão
-.PHONY: help build setup run clean test deps dev
+.PHONY: help build setup run clean test deps dev swagger-gen swagger-serve swagger-clean
 
 # Ajuda
 help: ## Mostra esta mensagem de ajuda
@@ -121,6 +121,19 @@ mod-update: ## Atualiza módulos Go
 	@go get -u ./...
 	@go mod tidy
 	@echo "✅ Módulos atualizados"
+
+# Swagger/Documentação
+swagger-gen: ## Gera documentação Swagger
+	@echo "📝 Gerando documentação Swagger..."
+	@./scripts/generate-docs.sh
+
+swagger-serve: swagger-gen dev ## Gera documentação e inicia servidor
+	@echo "🌐 Documentação disponível em: http://localhost:8080/swagger/"
+
+swagger-clean: ## Remove arquivos de documentação gerados
+	@echo "🧹 Limpando documentação..."
+	@rm -rf docs/
+	@echo "✅ Documentação removida"
 
 # Instalação
 install: build ## Instala o binário no sistema

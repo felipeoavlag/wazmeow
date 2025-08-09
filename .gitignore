@@ -24,3 +24,6 @@ Thumbs.db
 # Ignorar arquivos de configuração locais
 .env
 local.settings.json
+
+# Ignorar documentação Swagger gerada automaticamente
+docs/

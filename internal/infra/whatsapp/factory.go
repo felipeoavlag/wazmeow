@@ -3,9 +3,12 @@ package whatsapp
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"wazmeow/internal/domain/entity"
 	"wazmeow/internal/domain/repository"
+	"wazmeow/internal/domain/service"
+	"wazmeow/internal/infra/webhook"
 	"wazmeow/pkg/logger"
 
 	"go.mau.fi/whatsmeow"
@@ -16,15 +19,19 @@ import (
 
 // ClientFactory é responsável por criar clientes WhatsApp
 type ClientFactory struct {
-	deviceStore *sqlstore.Container
-	sessionRepo repository.SessionRepository
+	deviceStore          *sqlstore.Container
+	sessionRepo          repository.SessionRepository
+	sessionDomainService *service.SessionDomainService
+	webhookService       *webhook.WebhookService
 }
 
 // NewClientFactory cria uma nova instância do factory
-func NewClientFactory(deviceStore *sqlstore.Container, sessionRepo repository.SessionRepository) *ClientFactory {
+func NewClientFactory(deviceStore *sqlstore.Container, sessionRepo repository.SessionRepository, sessionDomainService *service.SessionDomainService, webhookService *webhook.WebhookService) *ClientFactory {
 	return &ClientFactory{
-		deviceStore: deviceStore,
-		sessionRepo: sessionRepo,
+		deviceStore:          deviceStore,
+		sessionRepo:          sessionRepo,
+		sessionDomainService: sessionDomainService,
+		webhookService:       webhookService,
 	}
 }
 
@@ -96,6 +103,11 @@ func (cf *ClientFactory) CreateClient(session *entity.Session) (*WhatsAppClient,
 	// Criar wrapper do cliente WhatsApp
 	client := NewWhatsAppClient(nativeClient, session.ID, cf.sessionRepo)
 
+	// Configurar webhook service no cliente
+	if cf.webhookService != nil {
+		client.SetWebhookService(cf.webhookService)
+	}
+
 	return client, nil
 }
 
@@ -129,39 +141,52 @@ func containsAt(s string) bool {
 	return false
 }
 
-// ConnectOnStartup conecta sessões que estavam conectadas antes do shutdown
+// ConnectOnStartup conecta sessões que possuem DeviceJID válido (já foram autenticadas)
 func (cf *ClientFactory) ConnectOnStartup(sessionManager *SessionManager) error {
-	// Buscar sessões que estavam conectadas
+	// Buscar todas as sessões
 	sessions, err := cf.sessionRepo.List()
 	if err != nil {
 		return fmt.Errorf("erro ao buscar sessões: %w", err)
 	}
 
 	for _, session := range sessions {
-		// Conectar apenas sessões que estavam conectadas
-		if session.Status == entity.StatusConnected {
-			logger.Info("Reconectando sessão '%s' na inicialização", session.Name)
+		// Usar domain service para determinar se deve reconectar automaticamente
+		if cf.sessionDomainService.ShouldAutoReconnectOnStartup(session) {
+			logger.Info("Reconectando sessão '%s' (DeviceJID: %s) na inicialização", session.Name, session.DeviceJID)
+
+			// Atualizar status para connecting
+			session.Status = entity.StatusConnecting
+			session.UpdatedAt = time.Now()
+			if err := cf.sessionRepo.Update(session); err != nil {
+				logger.Error("Erro ao atualizar status da sessão '%s': %v", session.Name, err)
+			}
 
 			// Criar cliente
 			client, err := cf.CreateClient(session)
 			if err != nil {
 				logger.Error("Erro ao criar cliente para sessão '%s': %v", session.Name, err)
+				// Atualizar status para desconectado
+				session.Status = entity.StatusDisconnected
+				session.UpdatedAt = time.Now()
+				cf.sessionRepo.Update(session)
 				continue
 			}
 
-			// Conectar cliente usando ConnectWithQR
-			// NÃO usar timeout para permitir que o loop QR continue ativo
-			if err := client.ConnectWithQR(context.Background()); err != nil {
-				logger.Error("Erro ao conectar sessão '%s': %v", session.Name, err)
+			// Para sessões já autenticadas, usar conexão direta (sem QR)
+			if err := client.ConnectDirect(); err != nil {
+				logger.Error("Erro ao reconectar sessão '%s': %v", session.Name, err)
 				// Atualizar status para desconectado
 				session.Status = entity.StatusDisconnected
+				session.UpdatedAt = time.Now()
 				cf.sessionRepo.Update(session)
 				continue
 			}
 
 			// Armazenar cliente no gerenciador
 			sessionManager.SetClient(session.ID, client)
-			logger.Info("Sessão '%s' reconectada com sucesso", session.Name)
+			logger.Info("Sessão '%s' reconectada automaticamente com sucesso", session.Name)
+		} else {
+			logger.Debug("Sessão '%s' não possui DeviceJID, pulando reconexão automática", session.Name)
 		}
 	}
 

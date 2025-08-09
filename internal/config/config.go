@@ -17,6 +17,7 @@ type Config struct {
 	Session  SessionConfig  `json:"session"`
 	Security SecurityConfig `json:"security"`
 	App      AppConfig      `json:"app"`
+	Webhook  WebhookConfig  `json:"webhook"`
 }
 
 // DatabaseConfig configurações do banco de dados
@@ -70,6 +71,31 @@ type AppConfig struct {
 	Environment string `json:"environment"`
 }
 
+// WebhookConfig configurações de webhook
+type WebhookConfig struct {
+	Timeout        time.Duration        `json:"timeout"`
+	MaxRetries     int                  `json:"max_retries"`
+	RetryDelay     time.Duration        `json:"retry_delay"`
+	Workers        int                  `json:"workers"`
+	QueueSize      int                  `json:"queue_size"`
+	CircuitBreaker CircuitBreakerConfig `json:"circuit_breaker"`
+	RateLimit      RateLimitConfig      `json:"rate_limit"`
+}
+
+// CircuitBreakerConfig configurações do circuit breaker
+type CircuitBreakerConfig struct {
+	MaxFailures      int           `json:"max_failures"`
+	ResetTimeout     time.Duration `json:"reset_timeout"`
+	HalfOpenMaxCalls int           `json:"half_open_max_calls"`
+}
+
+// RateLimitConfig configurações de rate limiting
+type RateLimitConfig struct {
+	RequestsPerSecond int           `json:"requests_per_second"`
+	BurstSize         int           `json:"burst_size"`
+	CleanupInterval   time.Duration `json:"cleanup_interval"`
+}
+
 // Load carrega a configuração das variáveis de ambiente
 func Load() (*Config, error) {
 	config := &Config{
@@ -109,6 +135,23 @@ func Load() (*Config, error) {
 		App: AppConfig{
 			Debug:       parseBool("DEBUG", false),
 			Environment: getEnv("ENVIRONMENT", "production"),
+		},
+		Webhook: WebhookConfig{
+			Timeout:    parseDuration("WEBHOOK_TIMEOUT", "30s"),
+			MaxRetries: parseInt("WEBHOOK_MAX_RETRIES", 3),
+			RetryDelay: parseDuration("WEBHOOK_RETRY_DELAY", "5s"),
+			Workers:    parseInt("WEBHOOK_WORKERS", 5),
+			QueueSize:  parseInt("WEBHOOK_QUEUE_SIZE", 1000),
+			CircuitBreaker: CircuitBreakerConfig{
+				MaxFailures:      parseInt("WEBHOOK_CB_MAX_FAILURES", 5),
+				ResetTimeout:     parseDuration("WEBHOOK_CB_RESET_TIMEOUT", "60s"),
+				HalfOpenMaxCalls: parseInt("WEBHOOK_CB_HALF_OPEN_MAX_CALLS", 3),
+			},
+			RateLimit: RateLimitConfig{
+				RequestsPerSecond: parseInt("WEBHOOK_RATE_LIMIT_RPS", 10),
+				BurstSize:         parseInt("WEBHOOK_RATE_LIMIT_BURST", 20),
+				CleanupInterval:   parseDuration("WEBHOOK_RATE_LIMIT_CLEANUP", "5m"),
+			},
 		},
 	}
 

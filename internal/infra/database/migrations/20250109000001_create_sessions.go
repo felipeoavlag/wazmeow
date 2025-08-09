@@ -24,6 +24,7 @@ func init() {
 				device_jid VARCHAR DEFAULT '',
 				qrcode TEXT DEFAULT '',
 				webhook_url VARCHAR DEFAULT '',
+				events VARCHAR DEFAULT '',
 
 				-- Campos de proxy
 				proxy_type VARCHAR NULL,

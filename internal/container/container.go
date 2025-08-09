@@ -15,6 +15,7 @@ import (
 	"wazmeow/internal/domain/repository"
 	"wazmeow/internal/domain/service"
 	"wazmeow/internal/infra/database"
+	"wazmeow/internal/infra/webhook"
 	"wazmeow/internal/infra/whatsapp"
 )
 
@@ -38,6 +39,7 @@ type Container struct {
 	bunDB          *database.BunConnection // Conexão Bun ORM para sessões da aplicação
 	sessionManager *whatsapp.SessionManager
 	clientFactory  *whatsapp.ClientFactory
+	webhookService *webhook.WebhookService // Serviço de webhooks
 
 	// ========================================
 	// REPOSITORIES
@@ -52,8 +54,13 @@ type Container struct {
 	// ========================================
 	// USE CASES - Organizados por categoria
 	// ========================================
-	sessionUseCases *SessionUseCases
-	messageUseCases *MessageUseCases
+	sessionUseCases    *SessionUseCases
+	messageUseCases    *MessageUseCases
+	webhookUseCases    *WebhookUseCases
+	userUseCases       *UserUseCases
+	chatUseCases       *ChatUseCases
+	groupUseCases      *GroupUseCases
+	newsletterUseCases *NewsletterUseCases
 
 	// ========================================
 	// CONTROLE INTERNO
@@ -82,9 +89,73 @@ type SessionUseCases struct {
 
 // MessageUseCases agrupa todos os use cases relacionados a mensagens
 type MessageUseCases struct {
-	// Envio de mensagens
+	// Envio de mensagens básicas
 	SendText  *usecase.SendTextMessageUseCase
 	SendMedia *usecase.SendMediaMessageUseCase
+
+	// Envio de mensagens específicas
+	SendImage    *usecase.SendImageMessageUseCase
+	SendAudio    *usecase.SendAudioMessageUseCase
+	SendDocument *usecase.SendDocumentMessageUseCase
+	SendVideo    *usecase.SendVideoMessageUseCase
+	SendSticker  *usecase.SendStickerMessageUseCase
+	SendLocation *usecase.SendLocationMessageUseCase
+	SendContact  *usecase.SendContactMessageUseCase
+	SendButtons  *usecase.SendButtonsMessageUseCase
+	SendList     *usecase.SendListMessageUseCase
+	SendPoll     *usecase.SendPollMessageUseCase
+
+	// Operações de mensagem
+	SendEdit      *usecase.SendEditMessageUseCase
+	DeleteMessage *usecase.DeleteMessageUseCase
+	React         *usecase.ReactMessageUseCase
+}
+
+// WebhookUseCases agrupa todos os use cases relacionados a webhooks
+type WebhookUseCases struct {
+	SetWebhook    *usecase.SetWebhookUseCase
+	GetWebhook    *usecase.GetWebhookUseCase
+	UpdateWebhook *usecase.UpdateWebhookUseCase
+	DeleteWebhook *usecase.DeleteWebhookUseCase
+}
+
+// UserUseCases agrupa todos os use cases relacionados a usuários
+type UserUseCases struct {
+	GetUserInfo *usecase.GetUserInfoUseCase
+	CheckUser   *usecase.CheckUserUseCase
+	GetAvatar   *usecase.GetAvatarUseCase
+	GetContacts *usecase.GetContactsUseCase
+}
+
+// ChatUseCases agrupa todos os use cases relacionados a chat
+type ChatUseCases struct {
+	SendPresence     *usecase.SendPresenceUseCase
+	ChatPresence     *usecase.ChatPresenceUseCase
+	MarkRead         *usecase.MarkReadUseCase
+	DownloadImage    *usecase.DownloadImageUseCase
+	DownloadVideo    *usecase.DownloadVideoUseCase
+	DownloadAudio    *usecase.DownloadAudioUseCase
+	DownloadDocument *usecase.DownloadDocumentUseCase
+}
+
+// GroupUseCases agrupa todos os use cases relacionados a grupos
+type GroupUseCases struct {
+	CreateGroup             *usecase.CreateGroupUseCase
+	SetGroupPhoto           *usecase.SetGroupPhotoUseCase
+	UpdateGroupParticipants *usecase.UpdateGroupParticipantsUseCase
+	LeaveGroup              *usecase.LeaveGroupUseCase
+	JoinGroup               *usecase.JoinGroupUseCase
+	GetGroupInfo            *usecase.GetGroupInfoUseCase
+	ListGroups              *usecase.ListGroupsUseCase
+	GetGroupInviteLink      *usecase.GetGroupInviteLinkUseCase
+	RevokeGroupInviteLink   *usecase.RevokeGroupInviteLinkUseCase
+	SetGroupName            *usecase.SetGroupNameUseCase
+	SetGroupTopic           *usecase.SetGroupTopicUseCase
+}
+
+// NewsletterUseCases agrupa todos os use cases relacionados a newsletters
+type NewsletterUseCases struct {
+	ListNewsletter *usecase.ListNewsletterUseCase
 }
 
 // New cria um novo container com todas as dependências configuradas
@@ -152,7 +223,7 @@ func (c *Container) GetSessionManager() *whatsapp.SessionManager {
 // GetClientFactory retorna o factory de clientes WhatsApp
 func (c *Container) GetClientFactory() *whatsapp.ClientFactory {
 	if c.clientFactory == nil {
-		c.clientFactory = whatsapp.NewClientFactory(c.db.Store, c.GetSessionRepository())
+		c.clientFactory = whatsapp.NewClientFactory(c.db.Store, c.GetSessionRepository(), c.GetSessionDomainService(), c.webhookService)
 	}
 	return c.clientFactory
 }
@@ -218,4 +289,229 @@ func (c *Container) GetSendTextMessageUseCase() *usecase.SendTextMessageUseCase 
 // GetSendMediaMessageUseCase retorna o use case de envio de mídia
 func (c *Container) GetSendMediaMessageUseCase() *usecase.SendMediaMessageUseCase {
 	return c.messageUseCases.SendMedia
+}
+
+// GetSendImageMessageUseCase retorna o use case de envio de imagem
+func (c *Container) GetSendImageMessageUseCase() *usecase.SendImageMessageUseCase {
+	return c.messageUseCases.SendImage
+}
+
+// GetSendAudioMessageUseCase retorna o use case de envio de áudio
+func (c *Container) GetSendAudioMessageUseCase() *usecase.SendAudioMessageUseCase {
+	return c.messageUseCases.SendAudio
+}
+
+// GetSendDocumentMessageUseCase retorna o use case de envio de documento
+func (c *Container) GetSendDocumentMessageUseCase() *usecase.SendDocumentMessageUseCase {
+	return c.messageUseCases.SendDocument
+}
+
+// GetSendVideoMessageUseCase retorna o use case de envio de vídeo
+func (c *Container) GetSendVideoMessageUseCase() *usecase.SendVideoMessageUseCase {
+	return c.messageUseCases.SendVideo
+}
+
+// GetSendStickerMessageUseCase retorna o use case de envio de sticker
+func (c *Container) GetSendStickerMessageUseCase() *usecase.SendStickerMessageUseCase {
+	return c.messageUseCases.SendSticker
+}
+
+// GetSendLocationMessageUseCase retorna o use case de envio de localização
+func (c *Container) GetSendLocationMessageUseCase() *usecase.SendLocationMessageUseCase {
+	return c.messageUseCases.SendLocation
+}
+
+// GetSendContactMessageUseCase retorna o use case de envio de contato
+func (c *Container) GetSendContactMessageUseCase() *usecase.SendContactMessageUseCase {
+	return c.messageUseCases.SendContact
+}
+
+// GetSendButtonsMessageUseCase retorna o use case de envio de botões
+func (c *Container) GetSendButtonsMessageUseCase() *usecase.SendButtonsMessageUseCase {
+	return c.messageUseCases.SendButtons
+}
+
+// GetSendListMessageUseCase retorna o use case de envio de lista
+func (c *Container) GetSendListMessageUseCase() *usecase.SendListMessageUseCase {
+	return c.messageUseCases.SendList
+}
+
+// GetSendPollMessageUseCase retorna o use case de envio de enquete
+func (c *Container) GetSendPollMessageUseCase() *usecase.SendPollMessageUseCase {
+	return c.messageUseCases.SendPoll
+}
+
+// GetSendEditMessageUseCase retorna o use case de edição de mensagem
+func (c *Container) GetSendEditMessageUseCase() *usecase.SendEditMessageUseCase {
+	return c.messageUseCases.SendEdit
+}
+
+// GetDeleteMessageUseCase retorna o use case de exclusão de mensagem
+func (c *Container) GetDeleteMessageUseCase() *usecase.DeleteMessageUseCase {
+	return c.messageUseCases.DeleteMessage
+}
+
+// GetReactMessageUseCase retorna o use case de reação a mensagem
+func (c *Container) GetReactMessageUseCase() *usecase.ReactMessageUseCase {
+	return c.messageUseCases.React
+}
+
+// ========================================
+// GETTERS PARA WEBHOOK USE CASES
+// ========================================
+
+// GetSetWebhookUseCase retorna o use case de definição de webhook
+func (c *Container) GetSetWebhookUseCase() *usecase.SetWebhookUseCase {
+	return c.webhookUseCases.SetWebhook
+}
+
+// GetGetWebhookUseCase retorna o use case de obtenção de webhook
+func (c *Container) GetGetWebhookUseCase() *usecase.GetWebhookUseCase {
+	return c.webhookUseCases.GetWebhook
+}
+
+// GetUpdateWebhookUseCase retorna o use case de atualização de webhook
+func (c *Container) GetUpdateWebhookUseCase() *usecase.UpdateWebhookUseCase {
+	return c.webhookUseCases.UpdateWebhook
+}
+
+// GetDeleteWebhookUseCase retorna o use case de remoção de webhook
+func (c *Container) GetDeleteWebhookUseCase() *usecase.DeleteWebhookUseCase {
+	return c.webhookUseCases.DeleteWebhook
+}
+
+// GetWebhookService retorna o serviço de webhooks
+func (c *Container) GetWebhookService() *webhook.WebhookService {
+	return c.webhookService
+}
+
+// ========================================
+// GETTERS PARA USER USE CASES
+// ========================================
+
+// GetSendPresenceUseCase retorna o use case de definição de presença
+func (c *Container) GetSendPresenceUseCase() *usecase.SendPresenceUseCase {
+	return c.chatUseCases.SendPresence
+}
+
+// GetGetUserInfoUseCase retorna o use case de obtenção de informações do usuário
+func (c *Container) GetGetUserInfoUseCase() *usecase.GetUserInfoUseCase {
+	return c.userUseCases.GetUserInfo
+}
+
+// GetCheckUserUseCase retorna o use case de verificação de usuário
+func (c *Container) GetCheckUserUseCase() *usecase.CheckUserUseCase {
+	return c.userUseCases.CheckUser
+}
+
+// GetGetAvatarUseCase retorna o use case de obtenção de avatar
+func (c *Container) GetGetAvatarUseCase() *usecase.GetAvatarUseCase {
+	return c.userUseCases.GetAvatar
+}
+
+// GetGetContactsUseCase retorna o use case de obtenção de contatos
+func (c *Container) GetGetContactsUseCase() *usecase.GetContactsUseCase {
+	return c.userUseCases.GetContacts
+}
+
+// ========================================
+// GETTERS PARA CHAT USE CASES
+// ========================================
+
+// GetChatPresenceUseCase retorna o use case de presença no chat
+func (c *Container) GetChatPresenceUseCase() *usecase.ChatPresenceUseCase {
+	return c.chatUseCases.ChatPresence
+}
+
+// GetMarkReadUseCase retorna o use case de marcar como lida
+func (c *Container) GetMarkReadUseCase() *usecase.MarkReadUseCase {
+	return c.chatUseCases.MarkRead
+}
+
+// GetDownloadImageUseCase retorna o use case de download de imagem
+func (c *Container) GetDownloadImageUseCase() *usecase.DownloadImageUseCase {
+	return c.chatUseCases.DownloadImage
+}
+
+// GetDownloadVideoUseCase retorna o use case de download de vídeo
+func (c *Container) GetDownloadVideoUseCase() *usecase.DownloadVideoUseCase {
+	return c.chatUseCases.DownloadVideo
+}
+
+// GetDownloadAudioUseCase retorna o use case de download de áudio
+func (c *Container) GetDownloadAudioUseCase() *usecase.DownloadAudioUseCase {
+	return c.chatUseCases.DownloadAudio
+}
+
+// GetDownloadDocumentUseCase retorna o use case de download de documento
+func (c *Container) GetDownloadDocumentUseCase() *usecase.DownloadDocumentUseCase {
+	return c.chatUseCases.DownloadDocument
+}
+
+// ========================================
+// GETTERS PARA GROUP USE CASES
+// ========================================
+
+// GetCreateGroupUseCase retorna o use case de criação de grupo
+func (c *Container) GetCreateGroupUseCase() *usecase.CreateGroupUseCase {
+	return c.groupUseCases.CreateGroup
+}
+
+// GetSetGroupPhotoUseCase retorna o use case de definição de foto do grupo
+func (c *Container) GetSetGroupPhotoUseCase() *usecase.SetGroupPhotoUseCase {
+	return c.groupUseCases.SetGroupPhoto
+}
+
+// GetUpdateGroupParticipantsUseCase retorna o use case de atualização de participantes
+func (c *Container) GetUpdateGroupParticipantsUseCase() *usecase.UpdateGroupParticipantsUseCase {
+	return c.groupUseCases.UpdateGroupParticipants
+}
+
+// GetLeaveGroupUseCase retorna o use case de saída do grupo
+func (c *Container) GetLeaveGroupUseCase() *usecase.LeaveGroupUseCase {
+	return c.groupUseCases.LeaveGroup
+}
+
+// GetJoinGroupUseCase retorna o use case de entrada no grupo
+func (c *Container) GetJoinGroupUseCase() *usecase.JoinGroupUseCase {
+	return c.groupUseCases.JoinGroup
+}
+
+// GetGetGroupInfoUseCase retorna o use case de obtenção de informações do grupo
+func (c *Container) GetGetGroupInfoUseCase() *usecase.GetGroupInfoUseCase {
+	return c.groupUseCases.GetGroupInfo
+}
+
+// GetListGroupsUseCase retorna o use case de listagem de grupos
+func (c *Container) GetListGroupsUseCase() *usecase.ListGroupsUseCase {
+	return c.groupUseCases.ListGroups
+}
+
+// GetGetGroupInviteLinkUseCase retorna o use case de obtenção de link de convite
+func (c *Container) GetGetGroupInviteLinkUseCase() *usecase.GetGroupInviteLinkUseCase {
+	return c.groupUseCases.GetGroupInviteLink
+}
+
+// GetRevokeGroupInviteLinkUseCase retorna o use case de revogação de link de convite
+func (c *Container) GetRevokeGroupInviteLinkUseCase() *usecase.RevokeGroupInviteLinkUseCase {
+	return c.groupUseCases.RevokeGroupInviteLink
+}
+
+// GetSetGroupNameUseCase retorna o use case de definição de nome do grupo
+func (c *Container) GetSetGroupNameUseCase() *usecase.SetGroupNameUseCase {
+	return c.groupUseCases.SetGroupName
+}
+
+// GetSetGroupTopicUseCase retorna o use case de definição de tópico do grupo
+func (c *Container) GetSetGroupTopicUseCase() *usecase.SetGroupTopicUseCase {
+	return c.groupUseCases.SetGroupTopic
+}
+
+// ========================================
+// GETTERS PARA NEWSLETTER USE CASES
+// ========================================
+
+// GetListNewsletterUseCase retorna o use case de listagem de newsletters
+func (c *Container) GetListNewsletterUseCase() *usecase.ListNewsletterUseCase {
+	return c.newsletterUseCases.ListNewsletter
 }

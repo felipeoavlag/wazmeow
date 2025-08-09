@@ -8,6 +8,7 @@ import (
 	"wazmeow/internal/domain/service"
 	"wazmeow/internal/infra/database"
 	infraRepo "wazmeow/internal/infra/repository"
+	"wazmeow/internal/infra/webhook"
 	"wazmeow/internal/infra/whatsapp"
 	"wazmeow/pkg/logger"
 )
@@ -128,9 +129,13 @@ func (b *Builder) setupInfrastructure(container *Container) error {
 	// Instanciar session manager
 	sessionManager := whatsapp.NewSessionManager()
 
+	// Instanciar webhook service
+	webhookService := webhook.NewWebhookService(&container.config.Webhook)
+
 	container.db = dbConnection
 	container.bunDB = bunConnection
 	container.sessionManager = sessionManager
+	container.webhookService = webhookService
 
 	return nil
 }
@@ -177,10 +182,86 @@ func (b *Builder) setupUseCases(container *Container) error {
 
 	// Instanciar use cases de mensagem
 	messageUseCases := &MessageUseCases{
+		// Envio de mensagens básicas
 		SendText:  usecase.NewSendTextMessageUseCase(container.sessionRepo, container.sessionManager),
 		SendMedia: usecase.NewSendMediaMessageUseCase(container.sessionRepo, container.sessionManager),
+
+		// Envio de mensagens específicas
+		SendImage:    usecase.NewSendImageMessageUseCase(container.sessionRepo, container.sessionManager),
+		SendAudio:    usecase.NewSendAudioMessageUseCase(container.sessionRepo, container.sessionManager),
+		SendDocument: usecase.NewSendDocumentMessageUseCase(container.sessionRepo, container.sessionManager),
+		SendVideo:    usecase.NewSendVideoMessageUseCase(container.sessionRepo, container.sessionManager),
+		SendSticker:  usecase.NewSendStickerMessageUseCase(container.sessionRepo, container.sessionManager),
+		SendLocation: usecase.NewSendLocationMessageUseCase(container.sessionRepo, container.sessionManager),
+		SendContact:  usecase.NewSendContactMessageUseCase(container.sessionRepo, container.sessionManager),
+		SendButtons:  usecase.NewSendButtonsMessageUseCase(container.sessionRepo, container.sessionManager),
+		SendList:     usecase.NewSendListMessageUseCase(container.sessionRepo, container.sessionManager),
+		SendPoll:     usecase.NewSendPollMessageUseCase(container.sessionRepo, container.sessionManager),
+
+		// Operações de mensagem
+		SendEdit:      usecase.NewSendEditMessageUseCase(container.sessionRepo, container.sessionManager),
+		DeleteMessage: usecase.NewDeleteMessageUseCase(container.sessionRepo, container.sessionManager),
+		React:         usecase.NewReactMessageUseCase(container.sessionRepo, container.sessionManager),
 	}
 
 	container.messageUseCases = messageUseCases
+
+	// Instanciar use cases de webhook
+	webhookUseCases := &WebhookUseCases{
+		SetWebhook:    usecase.NewSetWebhookUseCase(container.sessionRepo),
+		GetWebhook:    usecase.NewGetWebhookUseCase(container.sessionRepo),
+		UpdateWebhook: usecase.NewUpdateWebhookUseCase(container.sessionRepo),
+		DeleteWebhook: usecase.NewDeleteWebhookUseCase(container.sessionRepo),
+	}
+
+	container.webhookUseCases = webhookUseCases
+
+	// Instanciar use cases de usuário
+	userUseCases := &UserUseCases{
+		GetUserInfo: usecase.NewGetUserInfoUseCase(container.sessionRepo, container.sessionManager),
+		CheckUser:   usecase.NewCheckUserUseCase(container.sessionRepo, container.sessionManager),
+		GetAvatar:   usecase.NewGetAvatarUseCase(container.sessionRepo, container.sessionManager),
+		GetContacts: usecase.NewGetContactsUseCase(container.sessionRepo, container.sessionManager),
+	}
+
+	container.userUseCases = userUseCases
+
+	// Instanciar use cases de chat
+	chatUseCases := &ChatUseCases{
+		SendPresence:     usecase.NewSendPresenceUseCase(container.sessionRepo, container.sessionManager),
+		ChatPresence:     usecase.NewChatPresenceUseCase(container.sessionRepo, container.sessionManager),
+		MarkRead:         usecase.NewMarkReadUseCase(container.sessionRepo, container.sessionManager),
+		DownloadImage:    usecase.NewDownloadImageUseCase(container.sessionRepo, container.sessionManager),
+		DownloadVideo:    usecase.NewDownloadVideoUseCase(container.sessionRepo, container.sessionManager),
+		DownloadAudio:    usecase.NewDownloadAudioUseCase(container.sessionRepo, container.sessionManager),
+		DownloadDocument: usecase.NewDownloadDocumentUseCase(container.sessionRepo, container.sessionManager),
+	}
+
+	container.chatUseCases = chatUseCases
+
+	// Instanciar use cases de grupo
+	groupUseCases := &GroupUseCases{
+		CreateGroup:             usecase.NewCreateGroupUseCase(container.sessionRepo, container.sessionManager),
+		SetGroupPhoto:           usecase.NewSetGroupPhotoUseCase(container.sessionRepo, container.sessionManager),
+		UpdateGroupParticipants: usecase.NewUpdateGroupParticipantsUseCase(container.sessionRepo, container.sessionManager),
+		LeaveGroup:              usecase.NewLeaveGroupUseCase(container.sessionRepo, container.sessionManager),
+		JoinGroup:               usecase.NewJoinGroupUseCase(container.sessionRepo, container.sessionManager),
+		GetGroupInfo:            usecase.NewGetGroupInfoUseCase(container.sessionRepo, container.sessionManager),
+		ListGroups:              usecase.NewListGroupsUseCase(container.sessionRepo, container.sessionManager),
+		GetGroupInviteLink:      usecase.NewGetGroupInviteLinkUseCase(container.sessionRepo, container.sessionManager),
+		RevokeGroupInviteLink:   usecase.NewRevokeGroupInviteLinkUseCase(container.sessionRepo, container.sessionManager),
+		SetGroupName:            usecase.NewSetGroupNameUseCase(container.sessionRepo, container.sessionManager),
+		SetGroupTopic:           usecase.NewSetGroupTopicUseCase(container.sessionRepo, container.sessionManager),
+	}
+
+	container.groupUseCases = groupUseCases
+
+	// Instanciar use cases de newsletter
+	newsletterUseCases := &NewsletterUseCases{
+		ListNewsletter: usecase.NewListNewsletterUseCase(container.sessionRepo, container.sessionManager),
+	}
+
+	container.newsletterUseCases = newsletterUseCases
+
 	return nil
 }

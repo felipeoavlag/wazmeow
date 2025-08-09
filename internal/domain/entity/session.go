@@ -15,28 +15,42 @@ const (
 
 // Session representa uma sessão do WhatsApp
 type Session struct {
-	// Campos principais da sessão
-	ID     string        `json:"id"`
-	Name   string        `json:"name"`
-	Status SessionStatus `json:"status"`
-	Phone  string        `json:"phone,omitempty"`
+	// ID único da sessão
+	ID string `json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	// Nome da sessão
+	Name string `json:"name" example:"minha-sessao"`
+	// Status atual da sessão
+	Status SessionStatus `json:"status" example:"connected"`
+	// Número de telefone associado (opcional)
+	Phone string `json:"phone,omitempty" example:"+5511999999999"`
 
-	// Campos WhatsApp (conexão e autenticação)
-	DeviceJID string `json:"device_jid,omitempty"`
+	// JID do dispositivo WhatsApp (opcional)
+	DeviceJID string `json:"device_jid,omitempty" example:"5511999999999.0:1@s.whatsapp.net"`
 
-	// Configuração de proxy
+	// Configuração de proxy (opcional)
 	ProxyConfig *ProxyConfig `json:"proxy_config,omitempty"`
 
-	// Campos de auditoria (sempre no final)
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	// URL do webhook para receber eventos (opcional)
+	WebhookURL string `json:"webhook_url,omitempty" example:"https://example.com/webhook"`
+	// Eventos subscritos separados por vírgula (opcional)
+	Events string `json:"events,omitempty" example:"message,status"`
+
+	// Data de criação da sessão
+	CreatedAt time.Time `json:"created_at" example:"2023-08-19T10:30:00Z"`
+	// Data da última atualização
+	UpdatedAt time.Time `json:"updated_at" example:"2023-08-19T10:30:00Z"`
 }
 
 // ProxyConfig representa a configuração de proxy
 type ProxyConfig struct {
-	Type     string `json:"type"` // http, socks5
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
+	// Tipo do proxy (http, socks5)
+	Type string `json:"type" example:"http"`
+	// Host do servidor proxy
+	Host string `json:"host" example:"proxy.example.com"`
+	// Porta do servidor proxy
+	Port int `json:"port" example:"8080"`
+	// Nome de usuário para autenticação (opcional)
+	Username string `json:"username,omitempty" example:"usuario"`
+	// Senha para autenticação (opcional)
+	Password string `json:"password,omitempty" example:"senha"`
 }

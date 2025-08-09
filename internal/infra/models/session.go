@@ -23,6 +23,7 @@ type SessionModel struct {
 	DeviceJID  string `bun:"device_jid,default:''" json:"device_jid"`
 	QRCode     string `bun:"qrcode,default:''" json:"qrcode"`
 	WebhookURL string `bun:"webhook_url,default:''" json:"webhook_url"`
+	Events     string `bun:"events,default:''" json:"events"`
 
 	// Campos de proxy
 	ProxyType     string `bun:"proxy_type" json:"proxy_type"`
@@ -44,13 +45,15 @@ func (*SessionModel) TableName() string {
 // ToDomain converte o modelo de persistência para a entidade de domínio
 func (m *SessionModel) ToDomain() *entity.Session {
 	session := &entity.Session{
-		ID:        m.ID,
-		Name:      m.Name,
-		Status:    entity.SessionStatus(m.Status),
-		Phone:     m.Phone,
-		DeviceJID: m.DeviceJID,
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
+		ID:         m.ID,
+		Name:       m.Name,
+		Status:     entity.SessionStatus(m.Status),
+		Phone:      m.Phone,
+		DeviceJID:  m.DeviceJID,
+		WebhookURL: m.WebhookURL,
+		Events:     m.Events,
+		CreatedAt:  m.CreatedAt,
+		UpdatedAt:  m.UpdatedAt,
 	}
 
 	// Converter configuração de proxy se existir
@@ -70,16 +73,17 @@ func (m *SessionModel) ToDomain() *entity.Session {
 // FromDomain converte a entidade de domínio para o modelo de persistência
 func FromDomain(s *entity.Session) *SessionModel {
 	model := &SessionModel{
-		ID:        s.ID,
-		Name:      s.Name,
-		Status:    string(s.Status),
-		Phone:     s.Phone,
-		DeviceJID: s.DeviceJID,
-		CreatedAt: s.CreatedAt,
-		UpdatedAt: s.UpdatedAt,
+		ID:         s.ID,
+		Name:       s.Name,
+		Status:     string(s.Status),
+		Phone:      s.Phone,
+		DeviceJID:  s.DeviceJID,
+		WebhookURL: s.WebhookURL,
+		Events:     s.Events,
+		CreatedAt:  s.CreatedAt,
+		UpdatedAt:  s.UpdatedAt,
 		// Campos WhatsApp com valores padrão
-		WebhookURL: "",
-		QRCode:     "",
+		QRCode: "",
 	}
 
 	// Converter configuração de proxy se existir

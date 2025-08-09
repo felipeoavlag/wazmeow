@@ -99,6 +99,17 @@ func (s *SessionDomainService) ShouldReconnect(session *entity.Session, lastDisc
 	return timeSinceDisconnect < time.Hour
 }
 
+// ShouldAutoReconnectOnStartup determina se uma sessão deve ser reconectada automaticamente no startup
+func (s *SessionDomainService) ShouldAutoReconnectOnStartup(session *entity.Session) bool {
+	if session == nil {
+		return false
+	}
+
+	// Reconectar automaticamente se possui DeviceJID válido (já foi autenticada anteriormente)
+	// Nota: No startup, todas as sessões estão efetivamente desconectadas, independente do status no banco
+	return session.DeviceJID != ""
+}
+
 // CalculateRetryInterval calcula o intervalo para próxima tentativa de conexão
 func (s *SessionDomainService) CalculateRetryInterval(attemptCount int) time.Duration {
 	// Backoff exponencial com limite máximo

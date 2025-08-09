@@ -1,28 +1,76 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"wazmeow/internal/http"
 	"wazmeow/pkg/logger"
 
 	"github.com/lib/pq"
 	"go.mau.fi/whatsmeow/store/sqlstore"
+
+	_ "wazmeow/docs" // Import docs for swagger
 )
+
+// @title WazMeow API
+// @version 1.0
+// @description API REST para gerenciamento de sessões WhatsApp usando whatsmeow
+// @contact.name WazMeow Support
+// @contact.email support@wazmeow.com
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+// @host localhost:8080
+// @BasePath /
+// @schemes http https
 
 func main() {
 	// Configurar PostgreSQL array wrapper
 	sqlstore.PostgresArrayWrapper = pq.Array
 
-	// Criar e iniciar servidor
+	// Criar servidor
 	server, err := http.NewServer()
 	if err != nil {
 		fmt.Printf("❌ Erro ao criar servidor: %v\n", err)
 		return
 	}
 
-	// Iniciar servidor com graceful shutdown
-	if err := server.Start(); err != nil {
-		logger.Fatal("Erro ao executar servidor: %v", err)
+	// Canal para capturar sinais do sistema
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Canal para erros do servidor
+	serverErrors := make(chan error, 1)
+
+	// Iniciar servidor em goroutine
+	go func() {
+		logger.Info("🚀 Iniciando servidor WazMeow...")
+		if err := server.Start(); err != nil {
+			serverErrors <- err
+		}
+	}()
+
+	// Aguardar sinal de parada ou erro
+	select {
+	case err := <-serverErrors:
+		logger.Fatal("Erro no servidor: %v", err)
+	case sig := <-quit:
+		logger.Info("Recebido sinal de parada: %v", sig)
+
+		// Timeout para shutdown forçado
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
+
+		// Fazer shutdown direto e simples
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			logger.Error("Erro durante shutdown: %v", err)
+			os.Exit(1)
+		}
+
+		logger.Info("Servidor parado com sucesso")
 	}
 }

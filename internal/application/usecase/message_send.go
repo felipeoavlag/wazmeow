@@ -8,6 +8,7 @@ import (
 
 	"wazmeow/internal/application/dto/requests"
 	"wazmeow/internal/application/dto/responses"
+	"wazmeow/internal/domain/entity"
 	"wazmeow/internal/domain/repository"
 	"wazmeow/internal/infra/whatsapp"
 	"wazmeow/pkg/logger"
@@ -34,14 +35,14 @@ func NewSendTextMessageUseCase(sessionRepo repository.SessionRepository, session
 
 // Execute executa o envio de mensagem de texto
 func (uc *SendTextMessageUseCase) Execute(sessionID string, req *requests.SendTextMessageRequest) (*responses.SendMessageResponse, error) {
-	// Verificar se a sessão existe e está conectada
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	// Buscar sessão por ID ou nome
+	session, err := uc.findSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	// Obter cliente WhatsApp da sessão
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	// Obter cliente WhatsApp da sessão (usar o ID real da sessão)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -99,6 +100,23 @@ func (uc *SendTextMessageUseCase) Execute(sessionID string, req *requests.SendTe
 	}, nil
 }
 
+// findSession busca uma sessão por ID ou nome
+func (uc *SendTextMessageUseCase) findSession(identifier string) (*entity.Session, error) {
+	// Tentar buscar por ID primeiro
+	session, err := uc.sessionRepo.GetByID(identifier)
+	if err == nil {
+		return session, nil
+	}
+
+	// Se não encontrou por ID, tentar por nome
+	session, err = uc.sessionRepo.GetByName(identifier)
+	if err != nil {
+		return nil, fmt.Errorf("sessão '%s' não encontrada", identifier)
+	}
+
+	return session, nil
+}
+
 // SendMediaMessageUseCase representa o caso de uso para envio de mídia
 type SendMediaMessageUseCase struct {
 	sessionRepo    repository.SessionRepository
@@ -115,14 +133,14 @@ func NewSendMediaMessageUseCase(sessionRepo repository.SessionRepository, sessio
 
 // Execute executa o envio de mídia
 func (uc *SendMediaMessageUseCase) Execute(sessionID string, req *requests.SendMediaMessageRequest) (*responses.SendMessageResponse, error) {
-	// Verificar se a sessão existe e está conectada
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	// Buscar sessão por ID ou nome
+	session, err := uc.findSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	// Obter cliente WhatsApp da sessão
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	// Obter cliente WhatsApp da sessão (usar o ID real da sessão)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -188,11 +206,33 @@ func (uc *SendMediaMessageUseCase) Execute(sessionID string, req *requests.SendM
 	}, nil
 }
 
+// findSession busca uma sessão por ID ou nome
+func (uc *SendMediaMessageUseCase) findSession(identifier string) (*entity.Session, error) {
+	// Tentar buscar por ID primeiro
+	session, err := uc.sessionRepo.GetByID(identifier)
+	if err == nil {
+		return session, nil
+	}
+
+	// Se não encontrou por ID, tentar por nome
+	session, err = uc.sessionRepo.GetByName(identifier)
+	if err != nil {
+		return nil, fmt.Errorf("sessão '%s' não encontrada", identifier)
+	}
+
+	return session, nil
+}
+
 // parseJID converte uma string em JID do WhatsApp
 func parseJID(phone string) (types.JID, error) {
-	if phone[0] == '+' {
+	if phone == "" {
+		return types.JID{}, fmt.Errorf("número de telefone não pode estar vazio")
+	}
+
+	if len(phone) > 0 && phone[0] == '+' {
 		phone = phone[1:]
 	}
+
 	if !strings.ContainsRune(phone, '@') {
 		return types.NewJID(phone, types.DefaultUserServer), nil
 	} else {

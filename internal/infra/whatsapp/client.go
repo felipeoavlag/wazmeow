@@ -12,6 +12,7 @@ import (
 
 	"wazmeow/internal/domain/entity"
 	"wazmeow/internal/domain/repository"
+	"wazmeow/internal/infra/webhook"
 	"wazmeow/pkg/logger"
 
 	"github.com/mdp/qrterminal/v3"
@@ -34,6 +35,11 @@ type WhatsAppClient struct {
 	qrCancelFunc context.CancelFunc             // Para cancelar QR loop
 	isQRActive   bool                           // Flag se QR está ativo
 	isConnecting bool
+
+	// Webhook components
+	webhookService  *webhook.WebhookService
+	eventSerializer *webhook.EventSerializer
+	eventFilter     *webhook.EventFilter
 }
 
 // NewWhatsAppClient cria uma nova instância do cliente WhatsApp
@@ -47,10 +53,21 @@ func NewWhatsAppClient(client *whatsmeow.Client, sessionID string, sessionRepo r
 		isConnecting:  false,
 	}
 
+	// Inicializar componentes de webhook
+	wac.eventSerializer = webhook.NewEventSerializer()
+	wac.eventFilter = webhook.NewEventFilter()
+
 	// Configurar event handlers padrão
 	wac.setupDefaultEventHandlers()
 
 	return wac
+}
+
+// SetWebhookService define o serviço de webhook para o cliente
+func (wac *WhatsAppClient) SetWebhookService(webhookService *webhook.WebhookService) {
+	wac.mutex.Lock()
+	defer wac.mutex.Unlock()
+	wac.webhookService = webhookService
 }
 
 // Connect estabelece conexão com o WhatsApp (método legado)
@@ -128,6 +145,44 @@ func (wac *WhatsAppClient) ConnectWithQR(ctx context.Context) error {
 
 	go wac.processQREvents(qrCtx, qrChan)
 
+	return nil
+}
+
+// ConnectDirect conecta diretamente ao WhatsApp (para sessões já autenticadas)
+func (wac *WhatsAppClient) ConnectDirect() error {
+	wac.mutex.Lock()
+	defer wac.mutex.Unlock()
+
+	if wac.isConnecting {
+		return fmt.Errorf("cliente já está tentando conectar")
+	}
+
+	if wac.client.IsConnected() {
+		return fmt.Errorf("cliente já está conectado")
+	}
+
+	// Verificar se já está logado (tem DeviceJID)
+	if wac.client.Store.ID == nil {
+		return fmt.Errorf("sessão não está autenticada, use ConnectWithQR para autenticar")
+	}
+
+	wac.isConnecting = true
+	defer func() { wac.isConnecting = false }()
+
+	logger.Info("Conectando diretamente sessão %s (JID: %s)", wac.sessionID, wac.client.Store.ID.String())
+
+	// Atualizar status da sessão para conectando
+	if err := wac.updateSessionStatus(entity.StatusConnecting); err != nil {
+		logger.Error("Erro ao atualizar status da sessão: %v", err)
+	}
+
+	// Conectar diretamente (sem QR code)
+	if err := wac.client.Connect(); err != nil {
+		wac.updateSessionStatus(entity.StatusDisconnected)
+		return fmt.Errorf("erro ao conectar cliente já autenticado: %w", err)
+	}
+
+	logger.Info("Sessão %s conectada diretamente com sucesso", wac.sessionID)
 	return nil
 }
 
@@ -323,6 +378,7 @@ func (wac *WhatsAppClient) updateSessionStatus(status entity.SessionStatus) erro
 func (wac *WhatsAppClient) setupDefaultEventHandlers() {
 	wac.client.AddEventHandler(func(evt interface{}) {
 		switch e := evt.(type) {
+		// Eventos de conectividade
 		case *events.Connected:
 			wac.handleConnected(e)
 		case *events.Disconnected:
@@ -333,16 +389,61 @@ func (wac *WhatsAppClient) setupDefaultEventHandlers() {
 			wac.handleQR(e)
 		case *events.PairSuccess:
 			wac.handlePairSuccess(e)
+
+		// Eventos de mensagem
 		case *events.Message:
 			wac.handleMessage(e)
 		case *events.Receipt:
 			wac.handleReceipt(e)
+
+		// Eventos de presença
 		case *events.Presence:
 			wac.handlePresence(e)
 		case *events.ChatPresence:
 			wac.handleChatPresence(e)
+
+		// Eventos de grupo
+		case *events.GroupInfo:
+			wac.handleGroupInfo(e)
+
+		// Eventos de mídia e perfil
+		case *events.Picture:
+			wac.handlePicture(e)
+
+		// Eventos de histórico
+		case *events.HistorySync:
+			wac.handleHistorySync(e)
+
+		// Eventos de chamada
+		case *events.CallOffer:
+			wac.handleCallOffer(e)
+		case *events.CallAccept:
+			wac.handleCallAccept(e)
+		case *events.CallTerminate:
+			wac.handleCallTerminate(e)
+
+		// Eventos de newsletter
+		case *events.NewsletterJoin:
+			wac.handleNewsletterJoin(e)
+		case *events.NewsletterLeave:
+			wac.handleNewsletterLeave(e)
+		case *events.NewsletterMuteChange:
+			wac.handleNewsletterMuteChange(e)
+
+		// Outros eventos importantes
+		case *events.BlocklistChange:
+			wac.handleBlocklistChange(e)
+		case *events.PushName:
+			wac.handlePushName(e)
+		case *events.BusinessName:
+			wac.handleBusinessName(e)
+		case *events.JoinedGroup:
+			wac.handleJoinedGroup(e)
+
 		default:
 			logger.Debug("Evento não tratado: %T", evt)
+			// Enviar evento genérico via webhook
+			wac.handleGenericEvent(evt)
 		}
 	})
 }
@@ -364,6 +465,9 @@ func (wac *WhatsAppClient) handleConnected(evt *events.Connected) {
 	if err := wac.client.SendPresence(types.PresenceAvailable); err != nil {
 		logger.Warn("Erro ao enviar presença disponível: %v", err)
 	}
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
 }
 
 // handleDisconnected trata eventos de desconexão
@@ -374,6 +478,9 @@ func (wac *WhatsAppClient) handleDisconnected(evt *events.Disconnected) {
 	if err := wac.updateSessionStatus(entity.StatusDisconnected); err != nil {
 		logger.Error("Erro ao atualizar status da sessão: %v", err)
 	}
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
 }
 
 // handleLoggedOut trata eventos de logout
@@ -464,75 +571,32 @@ func (wac *WhatsAppClient) handlePairSuccess(evt *events.PairSuccess) {
 func (wac *WhatsAppClient) handleMessage(evt *events.Message) {
 	logger.Info("Mensagem recebida na sessão %s de %s", wac.sessionID, evt.Info.SourceString())
 
-	// Criar mapa de dados da mensagem
-	messageData := map[string]interface{}{
-		"type":      "Message",
-		"sessionId": wac.sessionID,
-		"messageId": evt.Info.ID,
-		"from":      evt.Info.Sender.String(),
-		"chat":      evt.Info.Chat.String(),
-		"timestamp": evt.Info.Timestamp.Unix(),
-		"pushName":  evt.Info.PushName,
-		"isFromMe":  evt.Info.IsFromMe,
-		"isGroup":   evt.Info.IsGroup,
-		"event":     evt,
-	}
-
-	// Processar mídia se presente
-	wac.processMessageMedia(evt, messageData)
-
-	// Aqui você pode implementar webhook ou outras integrações
-	wac.sendWebhook(messageData)
+	// Enviar webhook com evento bruto do whatsmeow
+	wac.sendWebhookForEvent(evt)
 }
 
 // handleReceipt trata eventos de confirmação de leitura
 func (wac *WhatsAppClient) handleReceipt(evt *events.Receipt) {
 	logger.Debug("Confirmação de leitura recebida na sessão %s", wac.sessionID)
 
-	receiptData := map[string]interface{}{
-		"type":        "ReadReceipt",
-		"sessionId":   wac.sessionID,
-		"messageIds":  evt.MessageIDs,
-		"from":        evt.SourceString(),
-		"timestamp":   evt.Timestamp.Unix(),
-		"receiptType": string(evt.Type),
-	}
-
-	// Aqui você pode implementar webhook ou outras integrações
-	wac.sendWebhook(receiptData)
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
 }
 
 // handlePresence trata eventos de presença
 func (wac *WhatsAppClient) handlePresence(evt *events.Presence) {
 	logger.Debug("Presença recebida na sessão %s de %s", wac.sessionID, evt.From.String())
 
-	presenceData := map[string]interface{}{
-		"type":        "Presence",
-		"sessionId":   wac.sessionID,
-		"from":        evt.From.String(),
-		"unavailable": evt.Unavailable,
-		"lastSeen":    evt.LastSeen.Unix(),
-	}
-
-	// Aqui você pode implementar webhook ou outras integrações
-	wac.sendWebhook(presenceData)
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
 }
 
 // handleChatPresence trata eventos de presença em chat
 func (wac *WhatsAppClient) handleChatPresence(evt *events.ChatPresence) {
 	logger.Debug("Presença de chat recebida na sessão %s", wac.sessionID)
 
-	chatPresenceData := map[string]interface{}{
-		"type":      "ChatPresence",
-		"sessionId": wac.sessionID,
-		"chat":      evt.MessageSource.Chat.String(),
-		"sender":    evt.MessageSource.Sender.String(),
-		"state":     string(evt.State),
-		"media":     string(evt.Media),
-	}
-
-	// Aqui você pode implementar webhook ou outras integrações
-	wac.sendWebhook(chatPresenceData)
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
 }
 
 // processMessageMedia processa mídia de mensagens
@@ -556,11 +620,135 @@ func (wac *WhatsAppClient) processMessageMedia(evt *events.Message, messageData 
 	}
 }
 
-// sendWebhook envia dados para webhook (implementação placeholder)
+// sendWebhook envia dados para webhook usando o sistema completo
 func (wac *WhatsAppClient) sendWebhook(data map[string]interface{}) {
-	// TODO: Implementar envio de webhook
-	// Por enquanto, apenas log
-	logger.Debug("Webhook data para sessão %s: %+v", wac.sessionID, data)
+	wac.mutex.RLock()
+	webhookService := wac.webhookService
+	wac.mutex.RUnlock()
+
+	// Se não há serviço de webhook configurado, apenas log
+	if webhookService == nil {
+		logger.Debug("Webhook service não configurado para sessão %s", wac.sessionID)
+		return
+	}
+
+	// Buscar configuração da sessão
+	session, err := wac.sessionRepo.GetByID(wac.sessionID)
+	if err != nil {
+		logger.Error("Erro ao buscar sessão para webhook: %v", err)
+		return
+	}
+
+	// Verificar se há webhook configurado
+	if session.WebhookURL == "" {
+		logger.Debug("Webhook URL não configurada para sessão %s", wac.sessionID)
+		return
+	}
+
+	// Extrair tipo do evento
+	eventType, ok := data["type"].(string)
+	if !ok {
+		logger.Error("Tipo de evento não encontrado nos dados do webhook")
+		return
+	}
+
+	// Verificar se deve enviar este evento
+	if !wac.eventFilter.ShouldSendEvent(session, eventType) {
+		logger.Debug("Evento %s filtrado para sessão %s", eventType, wac.sessionID)
+		return
+	}
+
+	// Criar evento de webhook com payload bruto
+	webhookEvent := &webhook.WebhookEvent{
+		ID:        fmt.Sprintf("evt_%s_%d", wac.sessionID, time.Now().UnixNano()),
+		Type:      eventType,
+		SessionID: wac.sessionID,
+		Timestamp: time.Now().Unix(),
+		Data:      data, // Enviar dados brutos como vêm do whatsmeow
+		URL:       session.WebhookURL,
+		Retries:   0,
+	}
+
+	// Enviar evento
+	err = webhookService.SendEvent(webhookEvent)
+	if err != nil {
+		logger.Error("Erro ao enviar webhook para sessão %s: %v", wac.sessionID, err)
+	} else {
+		logger.Debug("Webhook enviado para sessão %s: %s", wac.sessionID, eventType)
+	}
+}
+
+// sendWebhookForEvent envia evento bruto do whatsmeow via webhook
+func (wac *WhatsAppClient) sendWebhookForEvent(evt interface{}) {
+	wac.mutex.RLock()
+	webhookService := wac.webhookService
+	eventSerializer := wac.eventSerializer
+	wac.mutex.RUnlock()
+
+	logger.Debug("🔍 Tentando enviar webhook para evento %T na sessão %s", evt, wac.sessionID)
+
+	// Se não há serviço de webhook configurado, apenas log
+	if webhookService == nil {
+		logger.Error("❌ Webhook service não configurado para sessão %s", wac.sessionID)
+		return
+	}
+
+	logger.Debug("✅ Webhook service encontrado para sessão %s", wac.sessionID)
+
+	// Buscar configuração da sessão
+	session, err := wac.sessionRepo.GetByID(wac.sessionID)
+	if err != nil {
+		logger.Error("❌ Erro ao buscar sessão para webhook: %v", err)
+		return
+	}
+
+	logger.Debug("✅ Sessão encontrada: %s, WebhookURL: %s", wac.sessionID, session.WebhookURL)
+
+	// Verificar se há webhook configurado
+	if session.WebhookURL == "" {
+		logger.Error("❌ Webhook URL não configurada para sessão %s", wac.sessionID)
+		return
+	}
+
+	logger.Debug("✅ Webhook URL configurada: %s", session.WebhookURL)
+
+	// Serializar evento (payload bruto)
+	payload, err := eventSerializer.SerializeEvent(wac.sessionID, evt)
+	if err != nil {
+		logger.Error("❌ Erro ao serializar evento para webhook: %v", err)
+		return
+	}
+
+	logger.Debug("✅ Evento serializado: %s", payload.Event)
+
+	// Verificar se deve enviar este evento
+	if !wac.eventFilter.ShouldSendEvent(session, payload.Event) {
+		logger.Debug("🔧 Evento %s filtrado para sessão %s (eventos configurados: %s)", payload.Event, wac.sessionID, session.Events)
+		return
+	}
+
+	logger.Debug("✅ Evento %s aprovado pelo filtro", payload.Event)
+
+	// Criar evento de webhook
+	webhookEvent := &webhook.WebhookEvent{
+		ID:        payload.Metadata.EventID,
+		Type:      payload.Event,
+		SessionID: wac.sessionID,
+		Timestamp: payload.Timestamp,
+		Data:      payload.Data, // Dados brutos do evento
+		URL:       session.WebhookURL,
+		Retries:   0,
+	}
+
+	logger.Debug("🚀 Enviando webhook: ID=%s, Type=%s, URL=%s", webhookEvent.ID, webhookEvent.Type, webhookEvent.URL)
+
+	// Enviar evento
+	err = webhookService.SendEvent(webhookEvent)
+	if err != nil {
+		logger.Error("❌ Erro ao enviar webhook para sessão %s: %v", wac.sessionID, err)
+	} else {
+		logger.Info("✅ Webhook enviado com sucesso para sessão %s: %s", wac.sessionID, payload.Event)
+	}
 }
 
 // handleQRCode trata evento de novo código QR
@@ -695,4 +883,116 @@ func (wac *WhatsAppClient) sendQRWebhook(code, event string) {
 
 	// Usar método existente de webhook
 	wac.sendWebhook(webhookData)
+}
+
+// handleGroupInfo trata eventos de informações de grupo
+func (wac *WhatsAppClient) handleGroupInfo(evt *events.GroupInfo) {
+	logger.Debug("Informações de grupo recebidas na sessão %s para %s", wac.sessionID, evt.JID.String())
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handlePicture trata eventos de mudança de foto
+func (wac *WhatsAppClient) handlePicture(evt *events.Picture) {
+	logger.Debug("Mudança de foto recebida na sessão %s para %s", wac.sessionID, evt.JID.String())
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handleHistorySync trata eventos de sincronização de histórico
+func (wac *WhatsAppClient) handleHistorySync(evt *events.HistorySync) {
+	logger.Debug("Sincronização de histórico recebida na sessão %s", wac.sessionID)
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handleCallOffer trata eventos de oferta de chamada
+func (wac *WhatsAppClient) handleCallOffer(evt *events.CallOffer) {
+	logger.Info("Oferta de chamada recebida na sessão %s de %s", wac.sessionID, evt.From.String())
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handleCallAccept trata eventos de aceitação de chamada
+func (wac *WhatsAppClient) handleCallAccept(evt *events.CallAccept) {
+	logger.Info("Chamada aceita na sessão %s de %s", wac.sessionID, evt.From.String())
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handleCallTerminate trata eventos de término de chamada
+func (wac *WhatsAppClient) handleCallTerminate(evt *events.CallTerminate) {
+	logger.Info("Chamada terminada na sessão %s de %s", wac.sessionID, evt.From.String())
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handleNewsletterJoin trata eventos de entrada em newsletter
+func (wac *WhatsAppClient) handleNewsletterJoin(evt *events.NewsletterJoin) {
+	logger.Debug("Entrada em newsletter na sessão %s", wac.sessionID)
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handleNewsletterLeave trata eventos de saída de newsletter
+func (wac *WhatsAppClient) handleNewsletterLeave(evt *events.NewsletterLeave) {
+	logger.Debug("Saída de newsletter na sessão %s", wac.sessionID)
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handleNewsletterMuteChange trata eventos de mudança de mute em newsletter
+func (wac *WhatsAppClient) handleNewsletterMuteChange(evt *events.NewsletterMuteChange) {
+	logger.Debug("Mudança de mute em newsletter na sessão %s", wac.sessionID)
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handleBlocklistChange trata eventos de mudança na lista de bloqueados
+func (wac *WhatsAppClient) handleBlocklistChange(evt *events.BlocklistChange) {
+	logger.Debug("Mudança na lista de bloqueados na sessão %s", wac.sessionID)
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handlePushName trata eventos de mudança de nome de exibição
+func (wac *WhatsAppClient) handlePushName(evt *events.PushName) {
+	logger.Debug("Mudança de nome de exibição na sessão %s para %s", wac.sessionID, evt.JID.String())
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handleBusinessName trata eventos de mudança de nome comercial
+func (wac *WhatsAppClient) handleBusinessName(evt *events.BusinessName) {
+	logger.Debug("Mudança de nome comercial na sessão %s para %s", wac.sessionID, evt.JID.String())
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handleJoinedGroup trata eventos de entrada em grupo
+func (wac *WhatsAppClient) handleJoinedGroup(evt *events.JoinedGroup) {
+	logger.Info("Entrada em grupo na sessão %s: %s", wac.sessionID, evt.JID.String())
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handleGenericEvent trata eventos genéricos não mapeados
+func (wac *WhatsAppClient) handleGenericEvent(evt interface{}) {
+	logger.Debug("Evento genérico na sessão %s: %T", wac.sessionID, evt)
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
 }

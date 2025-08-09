@@ -67,9 +67,25 @@ services:
     networks:
       - wazmeow-network
 
-
-
-
+  # Webhook Tester - Para testar webhooks durante desenvolvimento
+  webhook-tester:
+    image: tarampampam/webhook-tester:latest
+    container_name: wazmeow-webhook-tester
+    restart: unless-stopped
+    ports:
+      - "8090:8080"
+    environment:
+      - LISTEN_ADDR=0.0.0.0
+      - LISTEN_PORT=8080
+      - MAX_REQUESTS=0
+      - CREATE_SESSION=true
+      - SESSION_TTL=168h
+      - IGNORE_HEADER_NAMES=
+      - RESPONSE_DELAY=0s
+      - RESPONSE_CODE=200
+      - RESPONSE_BODY=OK
+    networks:
+      - wazmeow-network
 
 volumes:
   postgres_data:
