@@ -1,2 +1,26 @@
 # Ignorar a pasta reference
 reference/
+
+# Ignorar binários e dependências Go
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Ignorar arquivos temporários e de sistema
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+
+# Ignorar arquivos do Docker
+*.pid
+*.sock
+
+# Ignorar arquivos de configuração locais
+.env
+local.settings.json
