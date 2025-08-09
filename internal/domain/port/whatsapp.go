@@ -7,27 +7,36 @@ import (
 
 // WhatsAppClient define a interface para o cliente WhatsApp
 type WhatsAppClient interface {
-	// Connect estabelece conexão com o WhatsApp
+	// Connect estabelece conexão com o WhatsApp (método legado)
 	Connect() error
-	
+
+	// ConnectWithQR estabelece conexão com o WhatsApp usando GetQRChannel
+	ConnectWithQR(ctx context.Context) error
+
 	// Disconnect desconecta do WhatsApp
 	Disconnect()
-	
+
 	// IsConnected verifica se está conectado
 	IsConnected() bool
-	
+
 	// IsLoggedIn verifica se está logado
 	IsLoggedIn() bool
-	
+
+	// IsQRActive verifica se o QR está ativo
+	IsQRActive() bool
+
+	// GetQRChannel retorna o canal para receber QR codes
+	GetQRChannel() <-chan string
+
 	// Logout faz logout da sessão
 	Logout(ctx context.Context) error
-	
+
 	// PairPhone emparelha um telefone
 	PairPhone(ctx context.Context, phone string, showPushNotification bool, clientType string, clientName string) (string, error)
-	
+
 	// AddEventHandler adiciona um handler de eventos
 	AddEventHandler(handler func(interface{})) string
-	
+
 	// RemoveEventHandler remove um handler de eventos
 	RemoveEventHandler(handlerID string)
 }
@@ -48,13 +57,13 @@ type QRCodeGenerator interface {
 type SessionManager interface {
 	// GetClient retorna o cliente WhatsApp para uma sessão
 	GetClient(sessionID string) (WhatsAppClient, error)
-	
+
 	// SetClient define o cliente WhatsApp para uma sessão
 	SetClient(sessionID string, client WhatsAppClient) error
-	
+
 	// RemoveClient remove o cliente WhatsApp de uma sessão
 	RemoveClient(sessionID string) error
-	
+
 	// IsSessionConnected verifica se uma sessão está conectada
 	IsSessionConnected(sessionID string) bool
 }

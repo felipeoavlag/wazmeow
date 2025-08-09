@@ -4,28 +4,40 @@ import (
 	"time"
 
 	"wazmeow/internal/domain/entity"
+
+	"github.com/uptrace/bun"
 )
 
 // SessionModel representa o modelo de persistência para sessões usando Bun ORM
 // Este modelo contém as tags específicas do banco de dados e é usado apenas na camada de infraestrutura
 type SessionModel struct {
-	ID        string    `bun:"id,pk" json:"id"`
-	Name      string    `bun:"name,unique,notnull" json:"name"`
-	Status    string    `bun:"status,notnull,default:'disconnected'" json:"status"`
-	Phone     string    `bun:"phone" json:"phone"`
-	CreatedAt time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"created_at"`
-	UpdatedAt time.Time `bun:"updated_at,nullzero,notnull,default:current_timestamp" json:"updated_at"`
+	bun.BaseModel `bun:"table:sessions"`
 
-	// Campos de proxy (embedded da ProxyConfig)
+	// Campos principais da sessão
+	ID     string `bun:"id,pk" json:"id"`
+	Name   string `bun:"name,unique,notnull" json:"name"`
+	Status string `bun:"status,notnull,default:'disconnected'" json:"status"`
+	Phone  string `bun:"phone" json:"phone"`
+
+	// Campos WhatsApp (conexão e autenticação)
+	DeviceJID  string `bun:"device_jid,default:''" json:"device_jid"`
+	QRCode     string `bun:"qrcode,default:''" json:"qrcode"`
+	WebhookURL string `bun:"webhook_url,default:''" json:"webhook_url"`
+
+	// Campos de proxy
 	ProxyType     string `bun:"proxy_type" json:"proxy_type"`
 	ProxyHost     string `bun:"proxy_host" json:"proxy_host"`
 	ProxyPort     int    `bun:"proxy_port" json:"proxy_port"`
 	ProxyUsername string `bun:"proxy_username" json:"proxy_username"`
 	ProxyPassword string `bun:"proxy_password" json:"proxy_password"`
+
+	// Campos de auditoria (sempre no final)
+	CreatedAt time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"created_at"`
+	UpdatedAt time.Time `bun:"updated_at,nullzero,notnull,default:current_timestamp" json:"updated_at"`
 }
 
 // TableName define o nome da tabela no banco de dados
-func (SessionModel) TableName() string {
+func (*SessionModel) TableName() string {
 	return "sessions"
 }
 
@@ -36,6 +48,7 @@ func (m *SessionModel) ToDomain() *entity.Session {
 		Name:      m.Name,
 		Status:    entity.SessionStatus(m.Status),
 		Phone:     m.Phone,
+		DeviceJID: m.DeviceJID,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
 	}
@@ -61,8 +74,12 @@ func FromDomain(s *entity.Session) *SessionModel {
 		Name:      s.Name,
 		Status:    string(s.Status),
 		Phone:     s.Phone,
+		DeviceJID: s.DeviceJID,
 		CreatedAt: s.CreatedAt,
 		UpdatedAt: s.UpdatedAt,
+		// Campos WhatsApp com valores padrão
+		WebhookURL: "",
+		QRCode:     "",
 	}
 
 	// Converter configuração de proxy se existir

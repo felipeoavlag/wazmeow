@@ -17,10 +17,6 @@ import (
 	"wazmeow/internal/domain/service"
 	"wazmeow/internal/infra/whatsapp"
 	"wazmeow/pkg/logger"
-
-	"go.mau.fi/whatsmeow"
-	"go.mau.fi/whatsmeow/store/sqlstore"
-	"go.mau.fi/whatsmeow/types/events"
 )
 
 // ========================================
@@ -41,16 +37,16 @@ import (
 // ConnectSessionUseCase representa o caso de uso para conectar sessões
 type ConnectSessionUseCase struct {
 	sessionRepo    repository.SessionRepository
-	deviceStore    *sqlstore.Container
+	clientFactory  *whatsapp.ClientFactory
 	sessionManager *whatsapp.SessionManager
 	domainService  *service.SessionDomainService
 }
 
 // NewConnectSessionUseCase cria uma nova instância do use case
-func NewConnectSessionUseCase(sessionRepo repository.SessionRepository, deviceStore *sqlstore.Container, sessionManager *whatsapp.SessionManager, domainService *service.SessionDomainService) *ConnectSessionUseCase {
+func NewConnectSessionUseCase(sessionRepo repository.SessionRepository, clientFactory *whatsapp.ClientFactory, sessionManager *whatsapp.SessionManager, domainService *service.SessionDomainService) *ConnectSessionUseCase {
 	return &ConnectSessionUseCase{
 		sessionRepo:    sessionRepo,
-		deviceStore:    deviceStore,
+		clientFactory:  clientFactory,
 		sessionManager: sessionManager,
 		domainService:  domainService,
 	}
@@ -82,17 +78,18 @@ func (uc *ConnectSessionUseCase) Execute(sessionID string) error {
 		return fmt.Errorf("erro ao atualizar status da sessão: %w", err)
 	}
 
-	// Criar device store para a sessão
-	deviceStore := uc.deviceStore.NewDevice()
+	// Criar cliente usando o factory
+	client, err := uc.clientFactory.CreateClient(session)
+	if err != nil {
+		session.Status = entity.StatusDisconnected
+		session.UpdatedAt = time.Now()
+		uc.sessionRepo.Update(session)
+		return fmt.Errorf("erro ao criar cliente: %w", err)
+	}
 
-	// Criar cliente WhatsApp
-	client := whatsmeow.NewClient(deviceStore, logger.ForWhatsApp())
-
-	// Configurar handlers de eventos
-	uc.setupEventHandlers(client, session)
-
-	// Conectar cliente
-	if err := client.Connect(); err != nil {
+	// Conectar cliente usando ConnectWithQR
+	// Não usar timeout para permitir que o loop QR continue ativo
+	if err := client.ConnectWithQR(context.Background()); err != nil {
 		session.Status = entity.StatusDisconnected
 		session.UpdatedAt = time.Now()
 		uc.sessionRepo.Update(session)
@@ -101,12 +98,12 @@ func (uc *ConnectSessionUseCase) Execute(sessionID string) error {
 
 	// Armazenar cliente no gerenciador de sessões
 	uc.sessionManager.SetClient(session.ID, client)
-	session.Status = entity.StatusConnected
-	session.UpdatedAt = time.Now()
 
-	if err := uc.sessionRepo.Update(session); err != nil {
-		logger.Error("Erro ao atualizar sessão após conexão: %v", err)
-	}
+	// NÃO atualizar status para connected aqui!
+	// O status será atualizado para 'connected' apenas quando:
+	// - handleConnected() for chamado (conexão estabelecida)
+	// - handlePairSuccess() for chamado (pareamento bem-sucedido)
+	// Por enquanto, manter status 'connecting' que foi definido anteriormente
 
 	logger.Info("Sessão '%s' conectada com sucesso", session.Name)
 	return nil
@@ -127,31 +124,6 @@ func (uc *ConnectSessionUseCase) findSession(identifier string) (*entity.Session
 	}
 
 	return session, nil
-}
-
-// setupEventHandlers configura os handlers de eventos do WhatsApp
-func (uc *ConnectSessionUseCase) setupEventHandlers(client *whatsmeow.Client, session *entity.Session) {
-	client.AddEventHandler(func(evt interface{}) {
-		switch evt.(type) {
-		case *events.Connected:
-			session.Status = entity.StatusConnected
-			session.UpdatedAt = time.Now()
-			uc.sessionRepo.Update(session)
-			logger.Info("Sessão '%s' conectada ao WhatsApp", session.Name)
-
-		case *events.Disconnected:
-			session.Status = entity.StatusDisconnected
-			session.UpdatedAt = time.Now()
-			uc.sessionRepo.Update(session)
-			logger.Info("Sessão '%s' desconectada do WhatsApp", session.Name)
-
-		case *events.LoggedOut:
-			session.Status = entity.StatusLoggedOut
-			session.UpdatedAt = time.Now()
-			uc.sessionRepo.Update(session)
-			logger.Info("Sessão '%s' fez logout do WhatsApp", session.Name)
-		}
-	})
 }
 
 // LogoutSessionUseCase representa o caso de uso para fazer logout de sessões
@@ -195,8 +167,8 @@ func (uc *LogoutSessionUseCase) Execute(sessionID string) error {
 	// Remover cliente do gerenciador
 	uc.sessionManager.RemoveClient(session.ID)
 
-	// Atualizar status da sessão
-	session.Status = entity.StatusLoggedOut
+	// Atualizar status da sessão para desconectado (logout = desconectado)
+	session.Status = entity.StatusDisconnected
 	session.UpdatedAt = time.Now()
 
 	if err := uc.sessionRepo.Update(session); err != nil {
@@ -246,61 +218,43 @@ func (uc *GetQRCodeUseCase) Execute(sessionID string) (*responses.QRResponse, er
 		return nil, err
 	}
 
+	// Verificar se cliente existe
+	client, exists := uc.sessionManager.GetClient(session.ID)
+	if !exists {
+		return &responses.QRResponse{
+			Status: "session_not_connected",
+		}, nil
+	}
+
 	// Verificar se já está logado
-	if uc.sessionManager.IsLoggedIn(session.ID) {
+	if client.IsLoggedIn() {
 		return &responses.QRResponse{
 			Status: "already_logged_in",
 		}, nil
 	}
 
-	// Criar canal para receber QR code
-	qrChan := make(chan string, 1)
-	errorChan := make(chan error, 1)
-
-	// Configurar handler para QR code
-	eventHandler := func(evt interface{}) {
-		switch e := evt.(type) {
-		case *events.QR:
-			select {
-			case qrChan <- e.Codes[0]:
-			default:
-			}
-		case *events.PairSuccess:
-			logger.Info("Emparelhamento bem-sucedido para sessão '%s'", session.Name)
-		}
+	// Verificar se QR está ativo
+	if !client.IsQRActive() {
+		return &responses.QRResponse{
+			Status: "qr_not_active",
+		}, nil
 	}
 
-	// Obter ou criar cliente
-	client, exists := uc.sessionManager.GetClient(session.ID)
-	if !exists {
-		// TODO: Criar cliente temporário para gerar QR code
-		// Por enquanto, retornar erro
-		return nil, fmt.Errorf("sessão '%s' não possui cliente inicializado", session.Name)
-	}
+	// Obter QR code atual do canal interno (compatibilidade)
+	qrChannel := client.GetQRChannel()
 
-	// Adicionar handler temporário
-	handlerID := client.AddEventHandler(eventHandler)
-	defer client.RemoveEventHandler(handlerID)
-
-	// Solicitar QR code
-	if err := client.Connect(); err != nil {
-		return nil, fmt.Errorf("erro ao conectar para obter QR: %w", err)
-	}
-
-	// Aguardar QR code com timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
+	// Tentar obter QR code do canal (não bloqueante)
 	select {
-	case qrCode := <-qrChan:
+	case qrCode := <-qrChannel:
 		return &responses.QRResponse{
 			QRCode: qrCode,
-			Status: "qr_generated",
+			Status: "qr_active",
 		}, nil
-	case err := <-errorChan:
-		return nil, fmt.Errorf("erro ao gerar QR: %w", err)
-	case <-ctx.Done():
-		return nil, fmt.Errorf("timeout ao aguardar QR code")
+	default:
+		// Nenhum QR disponível no momento
+		return &responses.QRResponse{
+			Status: "qr_pending",
+		}, nil
 	}
 }
 

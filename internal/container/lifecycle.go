@@ -102,8 +102,15 @@ func (c *Container) Restart() error {
 		return fmt.Errorf("erro ao recriar container: %w", err)
 	}
 
-	// Copiar estado do novo container
-	*c = *newContainer
+	// Atualizar campos do container sem copiar o mutex
+	c.config = newContainer.config
+	c.db = newContainer.db
+	c.bunDB = newContainer.bunDB
+	c.sessionManager = newContainer.sessionManager
+	c.sessionRepo = newContainer.sessionRepo
+	c.sessionDomainService = newContainer.sessionDomainService
+	c.sessionUseCases = newContainer.sessionUseCases
+	c.initialized = newContainer.initialized
 
 	logger.Info("✅ Container reiniciado com sucesso")
 	return nil

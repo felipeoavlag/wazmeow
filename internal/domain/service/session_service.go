@@ -78,7 +78,7 @@ func (s *SessionDomainService) CanConnect(session *entity.Session) error {
 		return fmt.Errorf("sessão '%s' já está conectada", session.Name)
 	case entity.StatusConnecting:
 		return fmt.Errorf("sessão '%s' já está em processo de conexão", session.Name)
-	case entity.StatusDisconnected, entity.StatusLoggedOut:
+	case entity.StatusDisconnected:
 		return nil // Pode conectar
 	default:
 		return fmt.Errorf("status da sessão '%s' é inválido: %s", session.Name, session.Status)
@@ -91,10 +91,8 @@ func (s *SessionDomainService) ShouldReconnect(session *entity.Session, lastDisc
 		return false
 	}
 
-	// Não reconectar se foi logout manual
-	if session.Status == entity.StatusLoggedOut {
-		return false
-	}
+	// Sempre tentar reconectar se estiver desconectado
+	// (não há mais distinção entre logout manual e desconexão)
 
 	// Reconectar apenas se desconectou há menos de 1 hora
 	timeSinceDisconnect := time.Since(lastDisconnectTime)
@@ -206,9 +204,7 @@ func (s *SessionDomainService) GetNextValidStatus(currentStatus entity.SessionSt
 	case entity.StatusConnecting:
 		return []entity.SessionStatus{entity.StatusConnected, entity.StatusDisconnected}
 	case entity.StatusConnected:
-		return []entity.SessionStatus{entity.StatusDisconnected, entity.StatusLoggedOut}
-	case entity.StatusLoggedOut:
-		return []entity.SessionStatus{entity.StatusConnecting}
+		return []entity.SessionStatus{entity.StatusDisconnected}
 	default:
 		return []entity.SessionStatus{}
 	}

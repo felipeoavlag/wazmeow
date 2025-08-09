@@ -1,7 +1,6 @@
 package container
 
 import (
-	"context"
 	"fmt"
 
 	"wazmeow/internal/application/usecase"
@@ -118,10 +117,12 @@ func (b *Builder) setupInfrastructure(container *Container) error {
 		return fmt.Errorf("erro ao conectar com Bun: %w", err)
 	}
 
-	// Executar auto-migrações do Bun
-	ctx := context.Background()
-	if err := bunConnection.AutoMigrate(ctx); err != nil {
-		return fmt.Errorf("erro nas auto-migrações do Bun: %w", err)
+	// Registrar modelos no Bun
+	bunConnection.RegisterModels()
+
+	// Executar migrações automaticamente na inicialização
+	if err := database.RunMigrations(bunConnection); err != nil {
+		return fmt.Errorf("erro ao executar migrações: %w", err)
 	}
 
 	// Instanciar session manager
@@ -163,7 +164,7 @@ func (b *Builder) setupUseCases(container *Container) error {
 		GetInfo: usecase.NewGetSessionInfoUseCase(container.sessionRepo),
 
 		// Conectividade
-		Connect: usecase.NewConnectSessionUseCase(container.sessionRepo, container.db.Store, container.sessionManager, container.sessionDomainService),
+		Connect: usecase.NewConnectSessionUseCase(container.sessionRepo, container.GetClientFactory(), container.sessionManager, container.sessionDomainService),
 		Logout:  usecase.NewLogoutSessionUseCase(container.sessionRepo, container.sessionManager),
 		GetQR:   usecase.NewGetQRCodeUseCase(container.sessionRepo, container.sessionManager),
 
@@ -173,5 +174,13 @@ func (b *Builder) setupUseCases(container *Container) error {
 	}
 
 	container.sessionUseCases = sessionUseCases
+
+	// Instanciar use cases de mensagem
+	messageUseCases := &MessageUseCases{
+		SendText:  usecase.NewSendTextMessageUseCase(container.sessionRepo, container.sessionManager),
+		SendMedia: usecase.NewSendMediaMessageUseCase(container.sessionRepo, container.sessionManager),
+	}
+
+	container.messageUseCases = messageUseCases
 	return nil
 }

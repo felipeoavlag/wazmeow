@@ -94,6 +94,11 @@ func (c *Connection) GetDeviceStore() *store.Device {
 	return c.Store.NewDevice()
 }
 
+// GetDeviceStoreContainer retorna o container do device store
+func (c *Connection) GetDeviceStoreContainer() *sqlstore.Container {
+	return c.Store
+}
+
 // Migrate executa as migrações necessárias
 func (c *Connection) Migrate() error {
 	logger.Info("Executando migrações do banco de dados")

@@ -55,6 +55,12 @@ func (s *Server) Start() error {
 	// Exibir informações de inicialização
 	s.printStartupInfo()
 
+	// Inicializar conexões WhatsApp das sessões que estavam conectadas
+	if err := s.initializeWhatsAppConnections(); err != nil {
+		logger.Error("Erro ao inicializar conexões WhatsApp: %v", err)
+		// Não retornar erro para não impedir a inicialização do servidor
+	}
+
 	// Canal para capturar sinais do sistema
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -87,6 +93,11 @@ func (s *Server) shutdown() error {
 	// Criar contexto com timeout para shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	// Desconectar todas as sessões WhatsApp
+	logger.Info("Desconectando sessões WhatsApp...")
+	sessionManager := s.container.GetSessionManager()
+	sessionManager.DisconnectAll()
 
 	// Parar de aceitar novas conexões e aguardar as existentes terminarem
 	if err := s.httpServer.Shutdown(ctx); err != nil {
@@ -121,4 +132,19 @@ func (s *Server) printStartupInfo() {
 // GetContainer retorna o container de dependências (útil para testes)
 func (s *Server) GetContainer() *container.Container {
 	return s.container
+}
+
+// initializeWhatsAppConnections inicializa as conexões WhatsApp das sessões que estavam conectadas
+func (s *Server) initializeWhatsAppConnections() error {
+	logger.Info("Inicializando conexões WhatsApp...")
+
+	clientFactory := s.container.GetClientFactory()
+	sessionManager := s.container.GetSessionManager()
+
+	if err := clientFactory.ConnectOnStartup(sessionManager); err != nil {
+		return fmt.Errorf("erro ao conectar sessões na inicialização: %w", err)
+	}
+
+	logger.Info("Conexões WhatsApp inicializadas com sucesso")
+	return nil
 }

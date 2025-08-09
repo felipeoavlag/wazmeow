@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"wazmeow/internal/infra/database/migrations"
 	"wazmeow/internal/infra/models"
 	"wazmeow/pkg/logger"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/extra/bundebug"
+	"github.com/uptrace/bun/migrate"
 )
 
 // BunConnection representa uma conexão com o banco de dados usando Bun ORM
@@ -61,50 +63,14 @@ func NewBunConnection(cfg Config) (*BunConnection, error) {
 	return &BunConnection{DB: db}, nil
 }
 
-// AutoMigrate executa as migrações automáticas do Bun
-func (c *BunConnection) AutoMigrate(ctx context.Context) error {
-	logger.Info("Executando auto-migrações Bun...")
+// RegisterModels registra os modelos no Bun para uso com ORM
+func (c *BunConnection) RegisterModels() {
+	logger.Info("Registrando modelos Bun...")
 
 	// Registrar modelos no Bun
 	c.DB.RegisterModel((*models.SessionModel)(nil))
 
-	// Criar tabelas automaticamente se não existirem
-	_, err := c.DB.NewCreateTable().
-		Model((*models.SessionModel)(nil)).
-		IfNotExists().
-		Exec(ctx)
-
-	if err != nil {
-		return fmt.Errorf("erro na auto-migração da tabela sessions: %w", err)
-	}
-
-	// Criar índices para melhor performance
-	if err := c.createIndexes(ctx); err != nil {
-		return fmt.Errorf("erro ao criar índices: %w", err)
-	}
-
-	logger.Info("Auto-migrações Bun concluídas com sucesso")
-	return nil
-}
-
-// createIndexes cria índices para melhor performance
-func (c *BunConnection) createIndexes(ctx context.Context) error {
-	indexes := []string{
-		"CREATE INDEX IF NOT EXISTS idx_sessions_name ON sessions(name)",
-		"CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status)",
-		"CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at)",
-		"CREATE INDEX IF NOT EXISTS idx_sessions_phone ON sessions(phone) WHERE phone IS NOT NULL AND phone != ''",
-	}
-
-	for _, indexSQL := range indexes {
-		_, err := c.DB.ExecContext(ctx, indexSQL)
-		if err != nil {
-			// Log o erro mas não falhe a migração por causa de índices
-			logger.Error("Erro ao criar índice: %v", err)
-		}
-	}
-
-	return nil
+	logger.Info("Modelos Bun registrados com sucesso")
 }
 
 // Health verifica se a conexão está saudável
@@ -169,6 +135,41 @@ func (c *BunConnection) RunInTransaction(ctx context.Context, fn func(tx bun.Tx)
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("erro ao fazer commit: %w", err)
+	}
+
+	return nil
+}
+
+// RunMigrations executa as migrações automaticamente na inicialização do sistema
+func RunMigrations(bunConn *BunConnection) error {
+	logger.Info("Executando migrações automaticamente...")
+
+	// Criar migrator
+	migrator := migrate.NewMigrator(
+		bunConn.GetDB(),
+		migrations.Migrations,
+		migrate.WithTableName("bun_migrations"),
+		migrate.WithLocksTableName("bun_migration_locks"),
+	)
+
+	// Inicializar sistema de migrações se necessário
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := migrator.Init(ctx); err != nil {
+		return fmt.Errorf("erro ao inicializar migrator: %w", err)
+	}
+
+	// Executar migrações pendentes
+	group, err := migrator.Migrate(ctx)
+	if err != nil {
+		return fmt.Errorf("erro ao executar migrações: %w", err)
+	}
+
+	if group.ID == 0 {
+		logger.Info("Nenhuma migração pendente encontrada")
+	} else {
+		logger.Info("Migrações aplicadas com sucesso: %s", group)
 	}
 
 	return nil

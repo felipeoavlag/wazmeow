@@ -11,15 +11,47 @@ Uma API REST completa para gerenciar sessões do WhatsApp usando Go e a bibliote
 - ✅ Conexão e desconexão de sessões
 - ✅ Logout de sessões
 - ✅ Listagem e informações detalhadas das sessões
+- ✅ Event handlers completos para mensagens, presença, confirmações de leitura
+- ✅ Reconexão automática de sessões na inicialização
+- ✅ Gerenciamento de mídia (imagens, áudios, vídeos, documentos)
+- ✅ Sistema de webhooks para eventos
+- ✅ Graceful shutdown com desconexão de todas as sessões
 
 ## 🏗️ Tecnologias
 
 - **Backend**: Go 1.23+ com Clean Architecture
 - **ORM**: Bun ORM com auto-migrações
 - **Banco de dados**: PostgreSQL 15+
-- **WhatsApp**: whatsmeow library
+- **WhatsApp**: whatsmeow library com event handlers completos
 - **HTTP Router**: Chi v5
 - **Containerização**: Docker & Docker Compose
+
+## 📱 Implementação WhatsApp
+
+A implementação do WhatsApp foi baseada no arquivo de referência `@reference/wuzapi/wmiau.go` e inclui:
+
+### 🔧 Componentes Principais
+
+- **WhatsAppClient**: Wrapper completo do cliente whatsmeow com event handlers
+- **SessionManager**: Gerenciador de sessões ativas com thread-safety
+- **ClientFactory**: Factory para criação e configuração de clientes
+- **Event Handlers**: Tratamento completo de eventos do WhatsApp
+
+### 📨 Eventos Suportados
+
+- **Conexão**: Connected, Disconnected, LoggedOut
+- **Autenticação**: QR Code generation, PairSuccess
+- **Mensagens**: Recebimento de mensagens de texto e mídia
+- **Confirmações**: Read receipts, delivery confirmations
+- **Presença**: Online/offline status, chat presence
+- **Mídia**: Processamento de imagens, áudios, vídeos e documentos
+
+### 🔄 Funcionalidades Avançadas
+
+- **Reconexão Automática**: Sessões conectadas são automaticamente reconectadas na inicialização
+- **Graceful Shutdown**: Desconexão limpa de todas as sessões ao parar o servidor
+- **Thread Safety**: Operações thread-safe em todos os componentes
+- **Error Handling**: Tratamento robusto de erros e recuperação de falhas
 
 ## 📋 Endpoints da API
 

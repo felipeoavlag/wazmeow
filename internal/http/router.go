@@ -73,5 +73,21 @@ func NewRouter(container *container.Container) http.Handler {
 		})
 	})
 
+	// Criar handler de mensagens com use cases
+	messageHandler := handlers.NewMessageHandlers(
+		container.GetSendTextMessageUseCase(),
+		container.GetSendMediaMessageUseCase(),
+	)
+
+	// Rotas de mensagens
+	r.Route("/message", func(r chi.Router) {
+		r.Route("/{sessionID}", func(r chi.Router) {
+			r.Route("/send", func(r chi.Router) {
+				r.Post("/text", messageHandler.SendTextMessage)
+				r.Post("/media", messageHandler.SendMediaMessage)
+			})
+		})
+	})
+
 	return r
 }

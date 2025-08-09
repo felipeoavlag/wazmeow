@@ -37,6 +37,7 @@ type Container struct {
 	db             *database.Connection    // Conexão para WhatsApp (sqlstore)
 	bunDB          *database.BunConnection // Conexão Bun ORM para sessões da aplicação
 	sessionManager *whatsapp.SessionManager
+	clientFactory  *whatsapp.ClientFactory
 
 	// ========================================
 	// REPOSITORIES
@@ -52,6 +53,7 @@ type Container struct {
 	// USE CASES - Organizados por categoria
 	// ========================================
 	sessionUseCases *SessionUseCases
+	messageUseCases *MessageUseCases
 
 	// ========================================
 	// CONTROLE INTERNO
@@ -76,6 +78,13 @@ type SessionUseCases struct {
 	// Setup e configuração
 	PairPhone *usecase.PairPhoneUseCase
 	SetProxy  *usecase.SetProxyUseCase
+}
+
+// MessageUseCases agrupa todos os use cases relacionados a mensagens
+type MessageUseCases struct {
+	// Envio de mensagens
+	SendText  *usecase.SendTextMessageUseCase
+	SendMedia *usecase.SendMediaMessageUseCase
 }
 
 // New cria um novo container com todas as dependências configuradas
@@ -140,6 +149,14 @@ func (c *Container) GetSessionManager() *whatsapp.SessionManager {
 	return c.sessionManager
 }
 
+// GetClientFactory retorna o factory de clientes WhatsApp
+func (c *Container) GetClientFactory() *whatsapp.ClientFactory {
+	if c.clientFactory == nil {
+		c.clientFactory = whatsapp.NewClientFactory(c.db.Store, c.GetSessionRepository())
+	}
+	return c.clientFactory
+}
+
 // ========================================
 // GETTERS PARA USE CASES
 // ========================================
@@ -187,4 +204,18 @@ func (c *Container) GetPairPhoneUseCase() *usecase.PairPhoneUseCase {
 // GetSetProxyUseCase retorna o use case de configuração de proxy
 func (c *Container) GetSetProxyUseCase() *usecase.SetProxyUseCase {
 	return c.sessionUseCases.SetProxy
+}
+
+// ========================================
+// GETTERS PARA MESSAGE USE CASES
+// ========================================
+
+// GetSendTextMessageUseCase retorna o use case de envio de mensagem de texto
+func (c *Container) GetSendTextMessageUseCase() *usecase.SendTextMessageUseCase {
+	return c.messageUseCases.SendText
+}
+
+// GetSendMediaMessageUseCase retorna o use case de envio de mídia
+func (c *Container) GetSendMediaMessageUseCase() *usecase.SendMediaMessageUseCase {
+	return c.messageUseCases.SendMedia
 }

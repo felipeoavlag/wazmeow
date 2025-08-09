@@ -10,6 +10,7 @@ require (
 	github.com/go-chi/render v1.0.3
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.9
+	github.com/mdp/qrterminal/v3 v3.2.1
 	github.com/rs/zerolog v1.34.0
 	github.com/uptrace/bun v1.2.15
 	github.com/uptrace/bun/dialect/pgdialect v1.2.15
@@ -17,6 +18,7 @@ require (
 	github.com/uptrace/bun/extra/bundebug v1.2.15
 	github.com/urfave/cli/v2 v2.27.7
 	go.mau.fi/whatsmeow v0.0.0-20250807072145-72ce90b82194
+	google.golang.org/protobuf v1.36.6
 )
 
 require (
@@ -43,7 +45,8 @@ require (
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
+	golang.org/x/term v0.33.0 // indirect
 	golang.org/x/text v0.27.0 // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
 	mellium.im/sasl v0.3.2 // indirect
+	rsc.io/qr v0.2.0 // indirect
 )

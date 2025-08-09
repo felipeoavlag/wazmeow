@@ -179,16 +179,14 @@ func (uc *GetSessionInfoUseCase) Execute(sessionID string) (*responses.SessionIn
 	}
 
 	// Criar resposta com informações detalhadas
+	// IsConnected baseado no status da sessão (não mais campo separado)
+	isConnected := session.Status == entity.StatusConnected
+
 	sessionInfo := &responses.SessionInfo{
 		Session:     session,
-		IsConnected: false,
-		IsLoggedIn:  false,
+		IsConnected: isConnected,
+		IsLoggedIn:  isConnected, // Se está conectado, está logado
 	}
-
-	// TODO: Implementar verificação de status usando SessionManager
-	// Por enquanto, definir como false
-	sessionInfo.IsConnected = false
-	sessionInfo.IsLoggedIn = false
 
 	return sessionInfo, nil
 }
