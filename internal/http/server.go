@@ -18,7 +18,7 @@ import (
 
 // Server representa o servidor HTTP da aplicação
 type Server struct {
-	container  *app.Container
+	container  *app.DependencyContainer
 	httpServer *http.Server
 }
 
@@ -28,7 +28,7 @@ func NewServer() (*Server, error) {
 	sqlstore.PostgresArrayWrapper = pq.Array
 
 	// Criar container com todas as dependências
-	container, err := app.NewContainer()
+	container, err := app.NewDependencyContainer()
 	if err != nil {
 		return nil, fmt.Errorf("erro ao criar container: %w", err)
 	}
@@ -119,6 +119,6 @@ func (s *Server) printStartupInfo() {
 }
 
 // GetContainer retorna o container de dependências (útil para testes)
-func (s *Server) GetContainer() *app.Container {
+func (s *Server) GetContainer() *app.DependencyContainer {
 	return s.container
 }

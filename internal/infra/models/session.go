@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	"wazmeow/internal/domain/entities"
+	"wazmeow/internal/domain/entity"
 )
 
 // SessionModel representa o modelo de persistência para sessões usando Bun ORM
@@ -30,20 +30,19 @@ func (SessionModel) TableName() string {
 }
 
 // ToDomain converte o modelo de persistência para a entidade de domínio
-func (m *SessionModel) ToDomain() *entities.Session {
-	session := &entities.Session{
+func (m *SessionModel) ToDomain() *entity.Session {
+	session := &entity.Session{
 		ID:        m.ID,
 		Name:      m.Name,
-		Status:    entities.SessionStatus(m.Status),
+		Status:    entity.SessionStatus(m.Status),
 		Phone:     m.Phone,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
-		Client:    nil, // Cliente WhatsApp não é persistido
 	}
 
 	// Converter configuração de proxy se existir
 	if m.ProxyType != "" {
-		session.ProxyConfig = &entities.ProxyConfig{
+		session.ProxyConfig = &entity.ProxyConfig{
 			Type:     m.ProxyType,
 			Host:     m.ProxyHost,
 			Port:     m.ProxyPort,
@@ -56,7 +55,7 @@ func (m *SessionModel) ToDomain() *entities.Session {
 }
 
 // FromDomain converte a entidade de domínio para o modelo de persistência
-func FromDomain(s *entities.Session) *SessionModel {
+func FromDomain(s *entity.Session) *SessionModel {
 	model := &SessionModel{
 		ID:        s.ID,
 		Name:      s.Name,
@@ -79,8 +78,8 @@ func FromDomain(s *entities.Session) *SessionModel {
 }
 
 // ToDomainList converte uma lista de modelos para entidades de domínio
-func ToDomainList(models []*SessionModel) []*entities.Session {
-	sessions := make([]*entities.Session, len(models))
+func ToDomainList(models []*SessionModel) []*entity.Session {
+	sessions := make([]*entity.Session, len(models))
 	for i, model := range models {
 		sessions[i] = model.ToDomain()
 	}

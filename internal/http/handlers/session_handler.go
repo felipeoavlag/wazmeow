@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"wazmeow/internal/domain/entities"
-	"wazmeow/internal/domain/requests"
-	"wazmeow/internal/domain/responses"
-	"wazmeow/internal/domain/usecases"
+	"wazmeow/internal/application/dto/requests"
+	"wazmeow/internal/application/dto/responses"
+	"wazmeow/internal/application/usecase"
+	"wazmeow/internal/domain/entity"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -15,28 +15,28 @@ import (
 
 // SessionHandler gerencia as rotas relacionadas às sessões usando use cases
 type SessionHandler struct {
-	createSessionUC  *usecases.CreateSessionUseCase
-	connectSessionUC *usecases.ConnectSessionUseCase
-	listSessionsUC   *usecases.ListSessionsUseCase
-	getQRCodeUC      *usecases.GetQRCodeUseCase
-	deleteSessionUC  *usecases.DeleteSessionUseCase
-	logoutSessionUC  *usecases.LogoutSessionUseCase
-	pairPhoneUC      *usecases.PairPhoneUseCase
-	getSessionInfoUC *usecases.GetSessionInfoUseCase
-	setProxyUC       *usecases.SetProxyUseCase
+	createSessionUC  *usecase.CreateSessionUseCase
+	connectSessionUC *usecase.ConnectSessionUseCase
+	listSessionsUC   *usecase.ListSessionsUseCase
+	getQRCodeUC      *usecase.GetQRCodeUseCase
+	deleteSessionUC  *usecase.DeleteSessionUseCase
+	logoutSessionUC  *usecase.LogoutSessionUseCase
+	pairPhoneUC      *usecase.PairPhoneUseCase
+	getSessionInfoUC *usecase.GetSessionInfoUseCase
+	setProxyUC       *usecase.SetProxyUseCase
 }
 
 // NewSessionHandler cria uma nova instância do handler de sessões com use cases
 func NewSessionHandler(
-	createSessionUC *usecases.CreateSessionUseCase,
-	connectSessionUC *usecases.ConnectSessionUseCase,
-	listSessionsUC *usecases.ListSessionsUseCase,
-	getQRCodeUC *usecases.GetQRCodeUseCase,
-	deleteSessionUC *usecases.DeleteSessionUseCase,
-	logoutSessionUC *usecases.LogoutSessionUseCase,
-	pairPhoneUC *usecases.PairPhoneUseCase,
-	getSessionInfoUC *usecases.GetSessionInfoUseCase,
-	setProxyUC *usecases.SetProxyUseCase,
+	createSessionUC *usecase.CreateSessionUseCase,
+	connectSessionUC *usecase.ConnectSessionUseCase,
+	listSessionsUC *usecase.ListSessionsUseCase,
+	getQRCodeUC *usecase.GetQRCodeUseCase,
+	deleteSessionUC *usecase.DeleteSessionUseCase,
+	logoutSessionUC *usecase.LogoutSessionUseCase,
+	pairPhoneUC *usecase.PairPhoneUseCase,
+	getSessionInfoUC *usecase.GetSessionInfoUseCase,
+	setProxyUC *usecase.SetProxyUseCase,
 ) *SessionHandler {
 	return &SessionHandler{
 		createSessionUC:  createSessionUC,
@@ -254,7 +254,7 @@ func (h *SessionHandler) SetProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Criar configuração de proxy
-	proxyConfig := &entities.ProxyConfig{
+	proxyConfig := &entity.ProxyConfig{
 		Type:     req.Type,
 		Host:     req.Host,
 		Port:     req.Port,

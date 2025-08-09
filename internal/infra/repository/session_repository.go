@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"wazmeow/internal/domain/entities"
-	"wazmeow/internal/domain/repositories"
+	"wazmeow/internal/domain/entity"
+	"wazmeow/internal/domain/repository"
 	"wazmeow/internal/infra/models"
 
 	"github.com/uptrace/bun"
@@ -19,12 +19,12 @@ type BunSessionRepository struct {
 }
 
 // NewBunSessionRepository cria uma nova instância do repository usando Bun
-func NewBunSessionRepository(db *bun.DB) repositories.SessionRepository {
+func NewBunSessionRepository(db *bun.DB) repository.SessionRepository {
 	return &BunSessionRepository{db: db}
 }
 
 // Create cria uma nova sessão no banco de dados
-func (r *BunSessionRepository) Create(session *entities.Session) error {
+func (r *BunSessionRepository) Create(session *entity.Session) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -57,7 +57,7 @@ func (r *BunSessionRepository) Create(session *entities.Session) error {
 }
 
 // GetByID busca uma sessão pelo ID
-func (r *BunSessionRepository) GetByID(id string) (*entities.Session, error) {
+func (r *BunSessionRepository) GetByID(id string) (*entity.Session, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -78,7 +78,7 @@ func (r *BunSessionRepository) GetByID(id string) (*entities.Session, error) {
 }
 
 // GetByName busca uma sessão pelo nome
-func (r *BunSessionRepository) GetByName(name string) (*entities.Session, error) {
+func (r *BunSessionRepository) GetByName(name string) (*entity.Session, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -99,7 +99,7 @@ func (r *BunSessionRepository) GetByName(name string) (*entities.Session, error)
 }
 
 // List retorna todas as sessões ordenadas por data de criação
-func (r *BunSessionRepository) List() ([]*entities.Session, error) {
+func (r *BunSessionRepository) List() ([]*entity.Session, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -117,7 +117,7 @@ func (r *BunSessionRepository) List() ([]*entities.Session, error) {
 }
 
 // Update atualiza uma sessão existente
-func (r *BunSessionRepository) Update(session *entities.Session) error {
+func (r *BunSessionRepository) Update(session *entity.Session) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

@@ -1,19 +1,21 @@
-// Package usecases contém os casos de uso da aplicação
+// Package usecase contém os casos de uso da camada de aplicação
 // Este arquivo (session_connect.go) contém os use cases para:
-// - Conectividade e autenticação com WhatsApp
-// - Gerenciamento do ciclo de vida da conexão
+// - Orquestração da conectividade e autenticação com WhatsApp
+// - Coordenação do ciclo de vida da conexão
 // - Operações: Connect, Logout, GetQR (autenticação)
-// - Integração direta com a biblioteca whatsmeow
-package usecases
+// - Integração entre domain services e infraestrutura WhatsApp
+package usecase
 
 import (
 	"context"
 	"fmt"
 	"time"
 
-	"wazmeow/internal/domain/entities"
-	"wazmeow/internal/domain/repositories"
-	"wazmeow/internal/domain/responses"
+	"wazmeow/internal/application/dto/responses"
+	"wazmeow/internal/domain/entity"
+	"wazmeow/internal/domain/repository"
+	"wazmeow/internal/domain/service"
+	"wazmeow/internal/infra/whatsapp"
 	"wazmeow/pkg/logger"
 
 	"go.mau.fi/whatsmeow"
@@ -38,15 +40,19 @@ import (
 
 // ConnectSessionUseCase representa o caso de uso para conectar sessões
 type ConnectSessionUseCase struct {
-	sessionRepo repositories.SessionRepository
-	deviceStore *sqlstore.Container
+	sessionRepo    repository.SessionRepository
+	deviceStore    *sqlstore.Container
+	sessionManager *whatsapp.SessionManager
+	domainService  *service.SessionDomainService
 }
 
 // NewConnectSessionUseCase cria uma nova instância do use case
-func NewConnectSessionUseCase(sessionRepo repositories.SessionRepository, deviceStore *sqlstore.Container) *ConnectSessionUseCase {
+func NewConnectSessionUseCase(sessionRepo repository.SessionRepository, deviceStore *sqlstore.Container, sessionManager *whatsapp.SessionManager, domainService *service.SessionDomainService) *ConnectSessionUseCase {
 	return &ConnectSessionUseCase{
-		sessionRepo: sessionRepo,
-		deviceStore: deviceStore,
+		sessionRepo:    sessionRepo,
+		deviceStore:    deviceStore,
+		sessionManager: sessionManager,
+		domainService:  domainService,
 	}
 }
 
@@ -58,13 +64,18 @@ func (uc *ConnectSessionUseCase) Execute(sessionID string) error {
 		return err
 	}
 
-	// Verificar se já está conectada
-	if session.Client != nil && session.Client.IsConnected() {
+	// Verificar se pode conectar usando regras de negócio
+	if err := uc.domainService.CanConnect(session); err != nil {
+		return err
+	}
+
+	// Verificar se já está conectada na infraestrutura
+	if uc.sessionManager.IsConnected(session.ID) {
 		return fmt.Errorf("sessão '%s' já está conectada", session.Name)
 	}
 
 	// Atualizar status para conectando
-	session.Status = entities.StatusConnecting
+	session.Status = entity.StatusConnecting
 	session.UpdatedAt = time.Now()
 
 	if err := uc.sessionRepo.Update(session); err != nil {
@@ -82,15 +93,15 @@ func (uc *ConnectSessionUseCase) Execute(sessionID string) error {
 
 	// Conectar cliente
 	if err := client.Connect(); err != nil {
-		session.Status = entities.StatusDisconnected
+		session.Status = entity.StatusDisconnected
 		session.UpdatedAt = time.Now()
 		uc.sessionRepo.Update(session)
 		return fmt.Errorf("erro ao conectar cliente: %w", err)
 	}
 
-	// Atualizar sessão com cliente
-	session.Client = client
-	session.Status = entities.StatusConnected
+	// Armazenar cliente no gerenciador de sessões
+	uc.sessionManager.SetClient(session.ID, client)
+	session.Status = entity.StatusConnected
 	session.UpdatedAt = time.Now()
 
 	if err := uc.sessionRepo.Update(session); err != nil {
@@ -102,7 +113,7 @@ func (uc *ConnectSessionUseCase) Execute(sessionID string) error {
 }
 
 // findSession busca uma sessão por ID ou nome
-func (uc *ConnectSessionUseCase) findSession(identifier string) (*entities.Session, error) {
+func (uc *ConnectSessionUseCase) findSession(identifier string) (*entity.Session, error) {
 	// Tentar buscar por ID primeiro
 	session, err := uc.sessionRepo.GetByID(identifier)
 	if err == nil {
@@ -119,23 +130,23 @@ func (uc *ConnectSessionUseCase) findSession(identifier string) (*entities.Sessi
 }
 
 // setupEventHandlers configura os handlers de eventos do WhatsApp
-func (uc *ConnectSessionUseCase) setupEventHandlers(client *whatsmeow.Client, session *entities.Session) {
+func (uc *ConnectSessionUseCase) setupEventHandlers(client *whatsmeow.Client, session *entity.Session) {
 	client.AddEventHandler(func(evt interface{}) {
 		switch evt.(type) {
 		case *events.Connected:
-			session.Status = entities.StatusConnected
+			session.Status = entity.StatusConnected
 			session.UpdatedAt = time.Now()
 			uc.sessionRepo.Update(session)
 			logger.Info("Sessão '%s' conectada ao WhatsApp", session.Name)
 
 		case *events.Disconnected:
-			session.Status = entities.StatusDisconnected
+			session.Status = entity.StatusDisconnected
 			session.UpdatedAt = time.Now()
 			uc.sessionRepo.Update(session)
 			logger.Info("Sessão '%s' desconectada do WhatsApp", session.Name)
 
 		case *events.LoggedOut:
-			session.Status = entities.StatusLoggedOut
+			session.Status = entity.StatusLoggedOut
 			session.UpdatedAt = time.Now()
 			uc.sessionRepo.Update(session)
 			logger.Info("Sessão '%s' fez logout do WhatsApp", session.Name)
@@ -145,13 +156,15 @@ func (uc *ConnectSessionUseCase) setupEventHandlers(client *whatsmeow.Client, se
 
 // LogoutSessionUseCase representa o caso de uso para fazer logout de sessões
 type LogoutSessionUseCase struct {
-	sessionRepo repositories.SessionRepository
+	sessionRepo    repository.SessionRepository
+	sessionManager *whatsapp.SessionManager
 }
 
 // NewLogoutSessionUseCase cria uma nova instância do use case
-func NewLogoutSessionUseCase(sessionRepo repositories.SessionRepository) *LogoutSessionUseCase {
+func NewLogoutSessionUseCase(sessionRepo repository.SessionRepository, sessionManager *whatsapp.SessionManager) *LogoutSessionUseCase {
 	return &LogoutSessionUseCase{
-		sessionRepo: sessionRepo,
+		sessionRepo:    sessionRepo,
+		sessionManager: sessionManager,
 	}
 }
 
@@ -163,23 +176,27 @@ func (uc *LogoutSessionUseCase) Execute(sessionID string) error {
 		return err
 	}
 
-	// Verificar se o cliente existe
-	if session.Client == nil {
+	// Obter cliente do gerenciador
+	client, exists := uc.sessionManager.GetClient(session.ID)
+	if !exists {
 		return fmt.Errorf("sessão '%s' não possui cliente inicializado", session.Name)
 	}
 
 	// Verificar se está conectado
-	if !session.Client.IsConnected() {
+	if !client.IsConnected() {
 		return fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
 
 	// Fazer logout
-	if err := session.Client.Logout(context.Background()); err != nil {
+	if err := client.Logout(context.Background()); err != nil {
 		return fmt.Errorf("erro ao fazer logout: %w", err)
 	}
 
+	// Remover cliente do gerenciador
+	uc.sessionManager.RemoveClient(session.ID)
+
 	// Atualizar status da sessão
-	session.Status = entities.StatusLoggedOut
+	session.Status = entity.StatusLoggedOut
 	session.UpdatedAt = time.Now()
 
 	if err := uc.sessionRepo.Update(session); err != nil {
@@ -191,7 +208,7 @@ func (uc *LogoutSessionUseCase) Execute(sessionID string) error {
 }
 
 // findSession busca uma sessão por ID ou nome
-func (uc *LogoutSessionUseCase) findSession(identifier string) (*entities.Session, error) {
+func (uc *LogoutSessionUseCase) findSession(identifier string) (*entity.Session, error) {
 	// Tentar buscar por ID primeiro
 	session, err := uc.sessionRepo.GetByID(identifier)
 	if err == nil {
@@ -209,13 +226,15 @@ func (uc *LogoutSessionUseCase) findSession(identifier string) (*entities.Sessio
 
 // GetQRCodeUseCase representa o caso de uso para obter QR code
 type GetQRCodeUseCase struct {
-	sessionRepo repositories.SessionRepository
+	sessionRepo    repository.SessionRepository
+	sessionManager *whatsapp.SessionManager
 }
 
 // NewGetQRCodeUseCase cria uma nova instância do use case
-func NewGetQRCodeUseCase(sessionRepo repositories.SessionRepository) *GetQRCodeUseCase {
+func NewGetQRCodeUseCase(sessionRepo repository.SessionRepository, sessionManager *whatsapp.SessionManager) *GetQRCodeUseCase {
 	return &GetQRCodeUseCase{
-		sessionRepo: sessionRepo,
+		sessionRepo:    sessionRepo,
+		sessionManager: sessionManager,
 	}
 }
 
@@ -227,13 +246,8 @@ func (uc *GetQRCodeUseCase) Execute(sessionID string) (*responses.QRResponse, er
 		return nil, err
 	}
 
-	// Verificar se o cliente existe
-	if session.Client == nil {
-		return nil, fmt.Errorf("sessão '%s' não está inicializada", session.Name)
-	}
-
 	// Verificar se já está logado
-	if session.Client.IsLoggedIn() {
+	if uc.sessionManager.IsLoggedIn(session.ID) {
 		return &responses.QRResponse{
 			Status: "already_logged_in",
 		}, nil
@@ -256,12 +270,20 @@ func (uc *GetQRCodeUseCase) Execute(sessionID string) (*responses.QRResponse, er
 		}
 	}
 
+	// Obter ou criar cliente
+	client, exists := uc.sessionManager.GetClient(session.ID)
+	if !exists {
+		// TODO: Criar cliente temporário para gerar QR code
+		// Por enquanto, retornar erro
+		return nil, fmt.Errorf("sessão '%s' não possui cliente inicializado", session.Name)
+	}
+
 	// Adicionar handler temporário
-	handlerID := session.Client.AddEventHandler(eventHandler)
-	defer session.Client.RemoveEventHandler(handlerID)
+	handlerID := client.AddEventHandler(eventHandler)
+	defer client.RemoveEventHandler(handlerID)
 
 	// Solicitar QR code
-	if err := session.Client.Connect(); err != nil {
+	if err := client.Connect(); err != nil {
 		return nil, fmt.Errorf("erro ao conectar para obter QR: %w", err)
 	}
 
@@ -283,7 +305,7 @@ func (uc *GetQRCodeUseCase) Execute(sessionID string) (*responses.QRResponse, er
 }
 
 // findSession busca uma sessão por ID ou nome
-func (uc *GetQRCodeUseCase) findSession(identifier string) (*entities.Session, error) {
+func (uc *GetQRCodeUseCase) findSession(identifier string) (*entity.Session, error) {
 	// Tentar buscar por ID primeiro
 	session, err := uc.sessionRepo.GetByID(identifier)
 	if err == nil {

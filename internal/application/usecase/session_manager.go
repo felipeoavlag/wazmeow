@@ -1,18 +1,20 @@
-// Package usecases contém os casos de uso da aplicação
+// Package usecase contém os casos de uso da camada de aplicação
 // Este arquivo (session_manager.go) contém os use cases para:
-// - Gerenciamento básico do ciclo de vida das sessões (CRUD)
+// - Orquestração do gerenciamento básico do ciclo de vida das sessões (CRUD)
 // - Operações fundamentais: Create, List, Delete, GetInfo
-// - Não contém lógica de conexão WhatsApp ou configurações avançadas
-package usecases
+// - Coordena entre domain services, repositories e infraestrutura
+// - Não contém regras de negócio (delegadas para domain services)
+package usecase
 
 import (
 	"fmt"
 	"time"
 
-	"wazmeow/internal/domain/entities"
-	"wazmeow/internal/domain/repositories"
-	"wazmeow/internal/domain/requests"
-	"wazmeow/internal/domain/responses"
+	"wazmeow/internal/application/dto/requests"
+	"wazmeow/internal/application/dto/responses"
+	"wazmeow/internal/domain/entity"
+	"wazmeow/internal/domain/repository"
+	"wazmeow/internal/domain/service"
 	"wazmeow/pkg/logger"
 
 	"github.com/google/uuid"
@@ -30,25 +32,23 @@ import (
 
 // CreateSessionUseCase representa o caso de uso para criar sessões
 type CreateSessionUseCase struct {
-	sessionRepo repositories.SessionRepository
+	sessionRepo   repository.SessionRepository
+	domainService *service.SessionDomainService
 }
 
 // NewCreateSessionUseCase cria uma nova instância do use case
-func NewCreateSessionUseCase(sessionRepo repositories.SessionRepository) *CreateSessionUseCase {
+func NewCreateSessionUseCase(sessionRepo repository.SessionRepository, domainService *service.SessionDomainService) *CreateSessionUseCase {
 	return &CreateSessionUseCase{
-		sessionRepo: sessionRepo,
+		sessionRepo:   sessionRepo,
+		domainService: domainService,
 	}
 }
 
 // Execute executa o caso de uso de criação de sessão
-func (uc *CreateSessionUseCase) Execute(req *requests.CreateSessionRequest) (*entities.Session, error) {
-	// Validar request
-	if req.Name == "" {
-		return nil, fmt.Errorf("nome da sessão é obrigatório")
-	}
-
-	if !req.IsValidURLName() {
-		return nil, fmt.Errorf("nome da sessão deve ter entre 3-50 caracteres, conter apenas letras, números, hífens e underscores, e não pode começar ou terminar com hífen ou underscore")
+func (uc *CreateSessionUseCase) Execute(req *requests.CreateSessionRequest) (*entity.Session, error) {
+	// Validar request usando domain service
+	if err := uc.domainService.ValidateSessionName(req.Name); err != nil {
+		return nil, err
 	}
 
 	// Verificar se já existe uma sessão com esse nome
@@ -62,10 +62,10 @@ func (uc *CreateSessionUseCase) Execute(req *requests.CreateSessionRequest) (*en
 	}
 
 	// Criar nova sessão
-	session := &entities.Session{
+	session := &entity.Session{
 		ID:        uuid.New().String(),
 		Name:      req.Name,
-		Status:    entities.StatusDisconnected,
+		Status:    entity.StatusDisconnected,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -81,18 +81,18 @@ func (uc *CreateSessionUseCase) Execute(req *requests.CreateSessionRequest) (*en
 
 // ListSessionsUseCase representa o caso de uso para listar sessões
 type ListSessionsUseCase struct {
-	sessionRepo repositories.SessionRepository
+	sessionRepo repository.SessionRepository
 }
 
 // NewListSessionsUseCase cria uma nova instância do use case
-func NewListSessionsUseCase(sessionRepo repositories.SessionRepository) *ListSessionsUseCase {
+func NewListSessionsUseCase(sessionRepo repository.SessionRepository) *ListSessionsUseCase {
 	return &ListSessionsUseCase{
 		sessionRepo: sessionRepo,
 	}
 }
 
 // Execute executa o caso de uso de listagem de sessões
-func (uc *ListSessionsUseCase) Execute() ([]*entities.Session, error) {
+func (uc *ListSessionsUseCase) Execute() ([]*entity.Session, error) {
 	sessions, err := uc.sessionRepo.List()
 	if err != nil {
 		return nil, err
@@ -103,13 +103,15 @@ func (uc *ListSessionsUseCase) Execute() ([]*entities.Session, error) {
 
 // DeleteSessionUseCase representa o caso de uso para deletar sessões
 type DeleteSessionUseCase struct {
-	sessionRepo repositories.SessionRepository
+	sessionRepo   repository.SessionRepository
+	domainService *service.SessionDomainService
 }
 
 // NewDeleteSessionUseCase cria uma nova instância do use case
-func NewDeleteSessionUseCase(sessionRepo repositories.SessionRepository) *DeleteSessionUseCase {
+func NewDeleteSessionUseCase(sessionRepo repository.SessionRepository, domainService *service.SessionDomainService) *DeleteSessionUseCase {
 	return &DeleteSessionUseCase{
-		sessionRepo: sessionRepo,
+		sessionRepo:   sessionRepo,
+		domainService: domainService,
 	}
 }
 
@@ -121,11 +123,14 @@ func (uc *DeleteSessionUseCase) Execute(sessionID string) error {
 		return err
 	}
 
-	// Desconectar cliente se estiver conectado
-	if session.Client != nil && session.Client.IsConnected() {
-		session.Client.Disconnect()
-		logger.Info("Cliente da sessão '%s' desconectado antes da deleção", session.Name)
+	// Verificar se pode deletar usando regras de negócio
+	if err := uc.domainService.CanDelete(session); err != nil {
+		return err
 	}
+
+	// TODO: Implementar desconexão usando SessionManager
+	// Por enquanto, apenas log
+	logger.Info("Deletando sessão '%s'", session.Name)
 
 	// Deletar sessão do repositório
 	if err := uc.sessionRepo.Delete(session.ID); err != nil {
@@ -137,7 +142,7 @@ func (uc *DeleteSessionUseCase) Execute(sessionID string) error {
 }
 
 // findSession busca uma sessão por ID ou nome
-func (uc *DeleteSessionUseCase) findSession(identifier string) (*entities.Session, error) {
+func (uc *DeleteSessionUseCase) findSession(identifier string) (*entity.Session, error) {
 	// Tentar buscar por ID primeiro
 	session, err := uc.sessionRepo.GetByID(identifier)
 	if err == nil {
@@ -155,11 +160,11 @@ func (uc *DeleteSessionUseCase) findSession(identifier string) (*entities.Sessio
 
 // GetSessionInfoUseCase representa o caso de uso para obter informações de sessão
 type GetSessionInfoUseCase struct {
-	sessionRepo repositories.SessionRepository
+	sessionRepo repository.SessionRepository
 }
 
 // NewGetSessionInfoUseCase cria uma nova instância do use case
-func NewGetSessionInfoUseCase(sessionRepo repositories.SessionRepository) *GetSessionInfoUseCase {
+func NewGetSessionInfoUseCase(sessionRepo repository.SessionRepository) *GetSessionInfoUseCase {
 	return &GetSessionInfoUseCase{
 		sessionRepo: sessionRepo,
 	}
@@ -180,17 +185,16 @@ func (uc *GetSessionInfoUseCase) Execute(sessionID string) (*responses.SessionIn
 		IsLoggedIn:  false,
 	}
 
-	// Verificar status de conexão e login se cliente existe
-	if session.Client != nil {
-		sessionInfo.IsConnected = session.Client.IsConnected()
-		sessionInfo.IsLoggedIn = session.Client.IsLoggedIn()
-	}
+	// TODO: Implementar verificação de status usando SessionManager
+	// Por enquanto, definir como false
+	sessionInfo.IsConnected = false
+	sessionInfo.IsLoggedIn = false
 
 	return sessionInfo, nil
 }
 
 // findSession busca uma sessão por ID ou nome
-func (uc *GetSessionInfoUseCase) findSession(identifier string) (*entities.Session, error) {
+func (uc *GetSessionInfoUseCase) findSession(identifier string) (*entity.Session, error) {
 	// Tentar buscar por ID primeiro
 	session, err := uc.sessionRepo.GetByID(identifier)
 	if err == nil {

@@ -14,7 +14,7 @@ import (
 )
 
 // NewRouter cria um novo roteador HTTP usando use cases
-func NewRouter(container *app.Container) http.Handler {
+func NewRouter(container *app.DependencyContainer) http.Handler {
 	r := chi.NewRouter()
 
 	// Middlewares
@@ -61,7 +61,7 @@ func NewRouter(container *app.Container) http.Handler {
 	r.Route("/sessions", func(r chi.Router) {
 		r.Get("/", sessionHandler.ListSessions)
 		r.Post("/add", sessionHandler.CreateSession)
-		
+
 		r.Route("/{sessionId}", func(r chi.Router) {
 			r.Get("/", sessionHandler.GetSessionInfo)
 			r.Delete("/", sessionHandler.DeleteSession)

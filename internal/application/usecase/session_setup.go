@@ -1,21 +1,19 @@
-// Package usecases contém os casos de uso da aplicação
+// Package usecase contém os casos de uso da camada de aplicação
 // Este arquivo (session_setup.go) contém os use cases para:
-// - Configuração e setup inicial das sessões
-// - Preparação de sessões para uso (proxy, emparelhamento)
+// - Orquestração da configuração e setup inicial das sessões
+// - Coordenação da preparação de sessões para uso (proxy, emparelhamento)
 // - Operações: PairPhone (emparelhamento), SetProxy (configuração de rede)
-// - Configurações técnicas que preparam a sessão para conectar
-package usecases
+// - Integração entre domain services e infraestrutura para configurações
+package usecase
 
 import (
-	"context"
 	"fmt"
 	"time"
 
-	"wazmeow/internal/domain/entities"
-	"wazmeow/internal/domain/repositories"
+	"wazmeow/internal/domain/entity"
+	"wazmeow/internal/domain/repository"
+	"wazmeow/internal/domain/service"
 	"wazmeow/pkg/logger"
-
-	"go.mau.fi/whatsmeow"
 )
 
 // ========================================
@@ -34,67 +32,38 @@ import (
 
 // PairPhoneUseCase representa o caso de uso para emparelhar telefone
 type PairPhoneUseCase struct {
-	sessionRepo repositories.SessionRepository
+	sessionRepo   repository.SessionRepository
+	domainService *service.SessionDomainService
 }
 
 // NewPairPhoneUseCase cria uma nova instância do use case
-func NewPairPhoneUseCase(sessionRepo repositories.SessionRepository) *PairPhoneUseCase {
+func NewPairPhoneUseCase(sessionRepo repository.SessionRepository, domainService *service.SessionDomainService) *PairPhoneUseCase {
 	return &PairPhoneUseCase{
-		sessionRepo: sessionRepo,
+		sessionRepo:   sessionRepo,
+		domainService: domainService,
 	}
 }
 
 // Execute executa o caso de uso de emparelhamento por telefone
 func (uc *PairPhoneUseCase) Execute(sessionID, phone string) (string, error) {
-	// Validar número de telefone
-	if phone == "" {
-		return "", fmt.Errorf("número de telefone é obrigatório")
+	// Validar número de telefone usando domain service
+	if err := uc.domainService.ValidatePhoneNumber(phone); err != nil {
+		return "", err
 	}
 
 	// Buscar sessão
-	session, err := uc.findSession(sessionID)
+	_, err := uc.findSession(sessionID)
 	if err != nil {
 		return "", err
 	}
 
-	// Verificar se o cliente existe
-	if session.Client == nil {
-		return "", fmt.Errorf("sessão '%s' não possui cliente inicializado", session.Name)
-	}
-
-	// Conectar se não estiver conectado
-	if !session.Client.IsConnected() {
-		if err := session.Client.Connect(); err != nil {
-			return "", fmt.Errorf("erro ao conectar cliente: %w", err)
-		}
-	}
-
-	// Emparelhar telefone
-	code, err := session.Client.PairPhone(
-		context.Background(),
-		phone,
-		true,
-		whatsmeow.PairClientChrome,
-		"Chrome (Linux)",
-	)
-	if err != nil {
-		return "", fmt.Errorf("erro ao emparelhar telefone: %w", err)
-	}
-
-	// Atualizar sessão com o telefone
-	session.Phone = phone
-	session.UpdatedAt = time.Now()
-
-	if err := uc.sessionRepo.Update(session); err != nil {
-		logger.Error("Erro ao atualizar sessão após emparelhamento: %v", err)
-	}
-
-	logger.Info("Código de emparelhamento gerado para %s na sessão '%s': %s", phone, session.Name, code)
-	return code, nil
+	// TODO: Implementar usando SessionManager
+	// Por enquanto, retornar erro
+	return "", fmt.Errorf("funcionalidade de emparelhamento não implementada ainda")
 }
 
 // findSession busca uma sessão por ID ou nome
-func (uc *PairPhoneUseCase) findSession(identifier string) (*entities.Session, error) {
+func (uc *PairPhoneUseCase) findSession(identifier string) (*entity.Session, error) {
 	// Tentar buscar por ID primeiro
 	session, err := uc.sessionRepo.GetByID(identifier)
 	if err == nil {
@@ -112,18 +81,20 @@ func (uc *PairPhoneUseCase) findSession(identifier string) (*entities.Session, e
 
 // SetProxyUseCase representa o caso de uso para configurar proxy
 type SetProxyUseCase struct {
-	sessionRepo repositories.SessionRepository
+	sessionRepo   repository.SessionRepository
+	domainService *service.SessionDomainService
 }
 
 // NewSetProxyUseCase cria uma nova instância do use case
-func NewSetProxyUseCase(sessionRepo repositories.SessionRepository) *SetProxyUseCase {
+func NewSetProxyUseCase(sessionRepo repository.SessionRepository, domainService *service.SessionDomainService) *SetProxyUseCase {
 	return &SetProxyUseCase{
-		sessionRepo: sessionRepo,
+		sessionRepo:   sessionRepo,
+		domainService: domainService,
 	}
 }
 
 // Execute executa o caso de uso de configuração de proxy
-func (uc *SetProxyUseCase) Execute(sessionID string, proxyConfig *entities.ProxyConfig) error {
+func (uc *SetProxyUseCase) Execute(sessionID string, proxyConfig *entity.ProxyConfig) error {
 	// Validar configuração de proxy
 	if proxyConfig == nil {
 		return fmt.Errorf("configuração de proxy é obrigatória")
@@ -163,7 +134,7 @@ func (uc *SetProxyUseCase) Execute(sessionID string, proxyConfig *entities.Proxy
 }
 
 // findSession busca uma sessão por ID ou nome
-func (uc *SetProxyUseCase) findSession(identifier string) (*entities.Session, error) {
+func (uc *SetProxyUseCase) findSession(identifier string) (*entity.Session, error) {
 	// Tentar buscar por ID primeiro
 	session, err := uc.sessionRepo.GetByID(identifier)
 	if err == nil {
