@@ -1,29 +1,76 @@
 # Ignorar a pasta reference
 reference/
 
-# Ignorar binários e dependências Go
+# Go específicos
 bin/
+vendor/
 *.exe
 *.dll
 *.so
 *.dylib
 *.test
 *.out
+*.cover
+coverage.txt
+coverage.html
+go.work
+go.work.sum
 
-# Ignorar arquivos temporários e de sistema
+# IDEs e Editores
+.vscode/
+.idea/
+*.sublime-*
+.vim/
+.nvim/
+*.swp
+*~
+
+# Arquivos temporários e de sistema
 *.log
 *.tmp
-*.swp
 .DS_Store
 Thumbs.db
-
-# Ignorar arquivos do Docker
 *.pid
 *.sock
 
-# Ignorar arquivos de configuração locais
-.env
-local.settings.json
+# Docker e Containers
+.dockerignore
+docker-compose.override.yml
+.docker/
 
-# Ignorar documentação Swagger gerada automaticamente
+# Configurações e Secrets
+.env
+.env.local
+.env.production
+.env.staging
+local.settings.json
+config/local.json
+*.pem
+*.key
+*.crt
+
+# Dados da aplicação
+data/
+storage/
+uploads/
+sessions/
+logs/
+*.db
+*.sqlite
+*.sqlite3
+
+# Documentação gerada
 docs/
+swagger/
+
+# Deploy e CI/CD
+.terraform/
+*.tfstate
+*.tfstate.backup
+.kube/
+.helm/
+
+# Backup e arquivos temporários
+*.bak
+*.backup
+*.orig
