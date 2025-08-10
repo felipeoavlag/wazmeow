@@ -63,11 +63,32 @@ func (uc *CreateSessionUseCase) Execute(req *requests.CreateSessionRequest) (*en
 
 	// Criar nova sessão
 	session := &entity.Session{
-		ID:        uuid.New().String(),
-		Name:      req.Name,
-		Status:    entity.StatusDisconnected,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:         uuid.New().String(),
+		Name:       req.Name,
+		Status:     entity.StatusDisconnected,
+		WebhookURL: req.WebhookURL, // Configurar webhook URL se fornecida
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	// Configurar proxy se fornecido
+	if req.Proxy != nil {
+		// Validar configuração de proxy
+		if err := uc.validateProxyConfig(req.Proxy); err != nil {
+			return nil, fmt.Errorf("configuração de proxy inválida: %w", err)
+		}
+
+		// Converter DTO para entidade de domínio
+		session.ProxyConfig = &entity.ProxyConfig{
+			Type:     req.Proxy.Type,
+			Host:     req.Proxy.Host,
+			Port:     req.Proxy.Port,
+			Username: req.Proxy.Username,
+			Password: req.Proxy.Password,
+		}
+
+		logger.Info("Proxy configurado na criação da sessão '%s': %s://%s:%d",
+			session.Name, req.Proxy.Type, req.Proxy.Host, req.Proxy.Port)
 	}
 
 	// Persistir sessão
@@ -77,6 +98,23 @@ func (uc *CreateSessionUseCase) Execute(req *requests.CreateSessionRequest) (*en
 
 	logger.Info("Sessão '%s' criada com sucesso (ID: %s)", session.Name, session.ID)
 	return session, nil
+}
+
+// validateProxyConfig valida a configuração de proxy
+func (uc *CreateSessionUseCase) validateProxyConfig(proxy *requests.ProxyConfig) error {
+	if proxy.Host == "" {
+		return fmt.Errorf("host do proxy é obrigatório")
+	}
+
+	if proxy.Port <= 0 || proxy.Port > 65535 {
+		return fmt.Errorf("porta do proxy deve estar entre 1 e 65535")
+	}
+
+	if proxy.Type != "http" && proxy.Type != "socks5" {
+		return fmt.Errorf("tipo de proxy deve ser 'http' ou 'socks5'")
+	}
+
+	return nil
 }
 
 // ListSessionsUseCase representa o caso de uso para listar sessões

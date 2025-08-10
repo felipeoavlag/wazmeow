@@ -11,10 +11,10 @@ import (
 	"wazmeow/internal/http"
 	"wazmeow/pkg/logger"
 
+	_ "wazmeow/docs" // Import docs for swagger
+
 	"github.com/lib/pq"
 	"go.mau.fi/whatsmeow/store/sqlstore"
-
-	_ "wazmeow/docs" // Import docs for swagger
 )
 
 // @title WazMeow API
@@ -27,6 +27,30 @@ import (
 // @host localhost:8080
 // @BasePath /
 // @schemes http https
+
+// @tag.name sessions
+// @tag.description Gerenciamento de sessões WhatsApp
+
+// @tag.name messages
+// @tag.description Envio e gerenciamento de mensagens
+
+// @tag.name chats
+// @tag.description Operações de chat e presença
+
+// @tag.name groups
+// @tag.description Gerenciamento de grupos WhatsApp
+
+// @tag.name contacts
+// @tag.description Gerenciamento de contatos
+
+// @tag.name webhooks
+// @tag.description Configuração de webhooks
+
+// @tag.name newsletters
+// @tag.description Gerenciamento de newsletters
+
+// @tag.name health
+// @tag.description Verificação de saúde da API
 
 func main() {
 	// Configurar PostgreSQL array wrapper

@@ -439,6 +439,8 @@ func (wac *WhatsAppClient) setupDefaultEventHandlers() {
 			wac.handleBusinessName(e)
 		case *events.JoinedGroup:
 			wac.handleJoinedGroup(e)
+		case *events.Contact:
+			wac.handleContact(e)
 
 		default:
 			logger.Debug("Evento não tratado: %T", evt)
@@ -597,27 +599,6 @@ func (wac *WhatsAppClient) handleChatPresence(evt *events.ChatPresence) {
 
 	// Enviar webhook com evento bruto
 	wac.sendWebhookForEvent(evt)
-}
-
-// processMessageMedia processa mídia de mensagens
-func (wac *WhatsAppClient) processMessageMedia(evt *events.Message, messageData map[string]interface{}) {
-	// TODO: Implementar processamento de mídia (imagens, áudios, vídeos, documentos)
-	// Por enquanto, apenas log
-	if evt.Message.GetImageMessage() != nil {
-		logger.Debug("Mensagem contém imagem")
-		messageData["mediaType"] = "image"
-	} else if evt.Message.GetAudioMessage() != nil {
-		logger.Debug("Mensagem contém áudio")
-		messageData["mediaType"] = "audio"
-	} else if evt.Message.GetVideoMessage() != nil {
-		logger.Debug("Mensagem contém vídeo")
-		messageData["mediaType"] = "video"
-	} else if evt.Message.GetDocumentMessage() != nil {
-		logger.Debug("Mensagem contém documento")
-		messageData["mediaType"] = "document"
-	} else {
-		messageData["mediaType"] = "text"
-	}
 }
 
 // sendWebhook envia dados para webhook usando o sistema completo
@@ -835,7 +816,7 @@ func (wac *WhatsAppClient) handleQRError(err error) {
 }
 
 // saveQRCodeToDB salva o QR code no banco de dados
-func (wac *WhatsAppClient) saveQRCodeToDB(code string) {
+func (wac *WhatsAppClient) saveQRCodeToDB(_ string) {
 	session, err := wac.sessionRepo.GetByID(wac.sessionID)
 	if err != nil {
 		logger.Error("Erro ao buscar sessão para salvar QR: %v", err)
@@ -984,6 +965,14 @@ func (wac *WhatsAppClient) handleBusinessName(evt *events.BusinessName) {
 // handleJoinedGroup trata eventos de entrada em grupo
 func (wac *WhatsAppClient) handleJoinedGroup(evt *events.JoinedGroup) {
 	logger.Info("Entrada em grupo na sessão %s: %s", wac.sessionID, evt.JID.String())
+
+	// Enviar webhook com evento bruto
+	wac.sendWebhookForEvent(evt)
+}
+
+// handleContact trata eventos de mudança de contato
+func (wac *WhatsAppClient) handleContact(evt *events.Contact) {
+	logger.Info("Mudança de contato na sessão %s para %s", wac.sessionID, evt.JID.String())
 
 	// Enviar webhook com evento bruto
 	wac.sendWebhookForEvent(evt)

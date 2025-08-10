@@ -56,6 +56,17 @@ func NewGroupHandlers(
 }
 
 // CreateGroup cria um novo grupo
+// @Summary Cria um novo grupo WhatsApp
+// @Description Cria um novo grupo WhatsApp com nome e participantes especificados
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.CreateGroupRequest true "Dados do grupo"
+// @Success 200 {object} map[string]interface{} "Grupo criado com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /group/{sessionID}/create [post]
 func (h *GroupHandlers) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -95,6 +106,17 @@ func (h *GroupHandlers) CreateGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 // SetGroupPhoto define foto do grupo
+// @Summary Define foto do grupo
+// @Description Define ou atualiza a foto de perfil de um grupo WhatsApp
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.SetGroupPhotoRequest true "Dados da foto do grupo"
+// @Success 200 {object} map[string]interface{} "Foto do grupo definida com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /group/{sessionID}/photo [post]
 func (h *GroupHandlers) SetGroupPhoto(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -134,6 +156,17 @@ func (h *GroupHandlers) SetGroupPhoto(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateGroupParticipants atualiza participantes do grupo
+// @Summary Atualiza participantes do grupo
+// @Description Adiciona ou remove participantes de um grupo WhatsApp
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.UpdateGroupParticipantsRequest true "Dados dos participantes"
+// @Success 200 {object} map[string]interface{} "Participantes do grupo atualizados com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /group/{sessionID}/participants [post]
 func (h *GroupHandlers) UpdateGroupParticipants(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -173,6 +206,17 @@ func (h *GroupHandlers) UpdateGroupParticipants(w http.ResponseWriter, r *http.R
 }
 
 // LeaveGroup sai do grupo
+// @Summary Sai de um grupo
+// @Description Remove o usuário atual de um grupo WhatsApp
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.LeaveGroupRequest true "Dados do grupo"
+// @Success 200 {object} map[string]interface{} "Saiu do grupo com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /group/{sessionID}/leave [post]
 func (h *GroupHandlers) LeaveGroup(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -212,6 +256,17 @@ func (h *GroupHandlers) LeaveGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 // JoinGroup entra no grupo via link
+// @Summary Entra em um grupo via link de convite
+// @Description Entra em um grupo WhatsApp usando um link de convite
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.JoinGroupRequest true "Dados do link de convite"
+// @Success 200 {object} map[string]interface{} "Entrou no grupo com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /group/{sessionID}/join [post]
 func (h *GroupHandlers) JoinGroup(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -251,6 +306,17 @@ func (h *GroupHandlers) JoinGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetGroupInfo obtém informações do grupo
+// @Summary Obtém informações de um grupo
+// @Description Retorna informações detalhadas de um grupo WhatsApp (nome, participantes, etc.)
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.GetGroupInfoRequest true "Dados do grupo"
+// @Success 200 {object} map[string]interface{} "Informações do grupo obtidas com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /group/{sessionID}/info [post]
 func (h *GroupHandlers) GetGroupInfo(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -289,6 +355,16 @@ func (h *GroupHandlers) GetGroupInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListGroups lista grupos
+// @Summary Lista todos os grupos
+// @Description Retorna uma lista de todos os grupos WhatsApp do usuário
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Success 200 {object} map[string]interface{} "Grupos listados com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /group/{sessionID}/list [get]
 func (h *GroupHandlers) ListGroups(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -320,6 +396,17 @@ func (h *GroupHandlers) ListGroups(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetGroupInviteLink obtém link de convite do grupo
+// @Summary Obtém link de convite do grupo
+// @Description Gera ou obtém o link de convite de um grupo WhatsApp
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.GetGroupInviteLinkRequest true "Dados do grupo"
+// @Success 200 {object} map[string]interface{} "Link de convite do grupo obtido com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /group/{sessionID}/invitelink [post]
 func (h *GroupHandlers) GetGroupInviteLink(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -358,6 +445,17 @@ func (h *GroupHandlers) GetGroupInviteLink(w http.ResponseWriter, r *http.Reques
 }
 
 // RevokeGroupInviteLink revoga link de convite do grupo
+// @Summary Revoga link de convite do grupo
+// @Description Revoga o link de convite atual de um grupo WhatsApp, gerando um novo
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.RevokeGroupInviteLinkRequest true "Dados do grupo"
+// @Success 200 {object} map[string]interface{} "Link de convite do grupo revogado com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /group/{sessionID}/invitelink [delete]
 func (h *GroupHandlers) RevokeGroupInviteLink(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -397,6 +495,17 @@ func (h *GroupHandlers) RevokeGroupInviteLink(w http.ResponseWriter, r *http.Req
 }
 
 // SetGroupName define nome do grupo
+// @Summary Define nome do grupo
+// @Description Altera o nome de um grupo WhatsApp
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.SetGroupNameRequest true "Dados do nome do grupo"
+// @Success 200 {object} map[string]interface{} "Nome do grupo definido com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /group/{sessionID}/name [post]
 func (h *GroupHandlers) SetGroupName(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -436,6 +545,17 @@ func (h *GroupHandlers) SetGroupName(w http.ResponseWriter, r *http.Request) {
 }
 
 // SetGroupTopic define tópico do grupo
+// @Summary Define tópico do grupo
+// @Description Altera a descrição/tópico de um grupo WhatsApp
+// @Tags groups
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.SetGroupTopicRequest true "Dados do tópico do grupo"
+// @Success 200 {object} map[string]interface{} "Tópico do grupo definido com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /group/{sessionID}/topic [post]
 func (h *GroupHandlers) SetGroupTopic(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {

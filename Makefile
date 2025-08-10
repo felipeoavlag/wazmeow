@@ -157,13 +157,25 @@ version: ## Mostra informações de versão
 # Banco de dados (utilitários)
 db-create: ## Cria o banco de dados PostgreSQL
 	@echo "🗄️  Criando banco de dados..."
-	@createdb wazmeow || echo "Banco já existe ou erro na criação"
+	@docker-compose exec postgres createdb -U postgres wazmeow || echo "Banco já existe ou erro na criação"
 
 db-drop: ## Remove o banco de dados PostgreSQL
 	@echo "🗑️  Removendo banco de dados..."
-	@dropdb wazmeow || echo "Banco não existe ou erro na remoção"
+	@docker-compose exec postgres dropdb -U postgres wazmeow || echo "Banco não existe ou erro na remoção"
 
-db-reset: db-drop db-create ## Recria o banco de dados
+db-reset: ## Recria o banco de dados (requer container rodando)
+	@echo "🔄 Resetando banco de dados..."
+	@make db-drop
+	@make db-create
+	@echo "✅ Banco resetado"
+
+db-reset-docker: ## Recria o banco via Docker (remove e recria container)
+	@echo "🔄 Resetando banco via Docker..."
+	@docker-compose stop postgres
+	@docker-compose rm -f postgres
+	@docker volume rm wazmeow_postgres_data || true
+	@docker-compose up -d postgres
+	@echo "✅ Banco resetado via Docker"
 
 # Desenvolvimento
 watch: ## Executa com hot reload (requer air)

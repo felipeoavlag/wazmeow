@@ -10,6 +10,24 @@ type SessionRequest struct {
 type CreateSessionRequest struct {
 	// Nome único da sessão
 	Name string `json:"name" example:"minha-sessao" validate:"required"`
+	// URL do webhook (opcional)
+	WebhookURL string `json:"webhookUrl,omitempty" example:"https://meusite.com/webhook"`
+	// Configuração de proxy (opcional)
+	Proxy *ProxyConfig `json:"proxy,omitempty"`
+}
+
+// ProxyConfig representa a configuração de proxy para criação de sessão
+type ProxyConfig struct {
+	// Tipo do proxy (http, socks5)
+	Type string `json:"type" example:"http" validate:"required"`
+	// Host do servidor proxy
+	Host string `json:"host" example:"proxy.example.com" validate:"required"`
+	// Porta do servidor proxy
+	Port int `json:"port" example:"8080" validate:"required,min=1,max=65535"`
+	// Nome de usuário para autenticação (opcional)
+	Username string `json:"username,omitempty" example:"usuario"`
+	// Senha para autenticação (opcional)
+	Password string `json:"password,omitempty" example:"senha"`
 }
 
 // PairPhoneRequest representa a requisição para emparelhar telefone

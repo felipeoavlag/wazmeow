@@ -25,6 +25,16 @@ func NewNewsletterHandlers(
 }
 
 // ListNewsletter lista newsletters subscritas
+// @Summary Lista newsletters subscritas
+// @Description Retorna a lista de newsletters/canais WhatsApp que o usuário está inscrito
+// @Tags newsletters
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Success 200 {object} map[string]interface{} "Newsletters listadas com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /newsletter/{sessionID}/list [get]
 func (h *NewsletterHandlers) ListNewsletter(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {

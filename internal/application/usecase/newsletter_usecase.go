@@ -15,6 +15,7 @@ import (
 type ListNewsletterUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewListNewsletterUseCase cria uma nova instância do use case
@@ -22,17 +23,18 @@ func NewListNewsletterUseCase(sessionRepo repository.SessionRepository, sessionM
 	return &ListNewsletterUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a listagem de newsletters
 func (uc *ListNewsletterUseCase) Execute(sessionID string) (*responses.NewsletterListResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}

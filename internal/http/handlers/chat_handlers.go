@@ -44,6 +44,17 @@ func NewChatHandlers(
 }
 
 // SendPresence define presença do usuário
+// @Summary Define presença do usuário
+// @Description Define o status de presença do usuário (disponível, ocupado, etc.)
+// @Tags chats
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.SendPresenceRequest true "Dados da presença"
+// @Success 200 {object} map[string]interface{} "Presença definida com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /chat/{sessionID}/presence [post]
 func (h *ChatHandlers) SendPresence(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -83,6 +94,17 @@ func (h *ChatHandlers) SendPresence(w http.ResponseWriter, r *http.Request) {
 }
 
 // ChatPresence define presença no chat
+// @Summary Define presença em um chat específico
+// @Description Define o status de presença em um chat específico (digitando, gravando áudio, etc.)
+// @Tags chats
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.ChatPresenceRequest true "Dados da presença no chat"
+// @Success 200 {object} map[string]interface{} "Presença no chat definida com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /chat/{sessionID}/chatpresence [post]
 func (h *ChatHandlers) ChatPresence(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -122,6 +144,17 @@ func (h *ChatHandlers) ChatPresence(w http.ResponseWriter, r *http.Request) {
 }
 
 // MarkRead marca mensagens como lidas
+// @Summary Marca mensagens como lidas
+// @Description Marca uma ou mais mensagens como lidas em um chat específico
+// @Tags chats
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.MarkReadRequest true "Dados das mensagens para marcar como lidas"
+// @Success 200 {object} map[string]interface{} "Mensagens marcadas como lidas com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /chat/{sessionID}/markread [post]
 func (h *ChatHandlers) MarkRead(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -161,6 +194,17 @@ func (h *ChatHandlers) MarkRead(w http.ResponseWriter, r *http.Request) {
 }
 
 // DownloadImage faz download de imagem
+// @Summary Faz download de imagem
+// @Description Baixa uma imagem recebida via WhatsApp e retorna os dados em base64
+// @Tags chats
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.DownloadImageRequest true "Dados da imagem para download"
+// @Success 200 {object} map[string]interface{} "Download da imagem concluído com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /chat/{sessionID}/download/image [post]
 func (h *ChatHandlers) DownloadImage(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -200,6 +244,17 @@ func (h *ChatHandlers) DownloadImage(w http.ResponseWriter, r *http.Request) {
 }
 
 // DownloadVideo faz download de vídeo
+// @Summary Faz download de vídeo
+// @Description Baixa um vídeo recebido via WhatsApp e retorna os dados em base64
+// @Tags chats
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.DownloadVideoRequest true "Dados do vídeo para download"
+// @Success 200 {object} map[string]interface{} "Download do vídeo concluído com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /chat/{sessionID}/download/video [post]
 func (h *ChatHandlers) DownloadVideo(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -239,6 +294,17 @@ func (h *ChatHandlers) DownloadVideo(w http.ResponseWriter, r *http.Request) {
 }
 
 // DownloadAudio faz download de áudio
+// @Summary Faz download de áudio
+// @Description Baixa um áudio recebido via WhatsApp e retorna os dados em base64
+// @Tags chats
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.DownloadAudioRequest true "Dados do áudio para download"
+// @Success 200 {object} map[string]interface{} "Download do áudio concluído com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /chat/{sessionID}/download/audio [post]
 func (h *ChatHandlers) DownloadAudio(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -278,6 +344,17 @@ func (h *ChatHandlers) DownloadAudio(w http.ResponseWriter, r *http.Request) {
 }
 
 // DownloadDocument faz download de documento
+// @Summary Faz download de documento
+// @Description Baixa um documento recebido via WhatsApp e retorna os dados em base64
+// @Tags chats
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.DownloadDocumentRequest true "Dados do documento para download"
+// @Success 200 {object} map[string]interface{} "Download do documento concluído com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /chat/{sessionID}/download/document [post]
 func (h *ChatHandlers) DownloadDocument(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {

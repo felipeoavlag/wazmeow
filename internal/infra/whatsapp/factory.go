@@ -3,6 +3,11 @@ package whatsapp
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	"wazmeow/internal/domain/entity"
@@ -15,6 +20,7 @@ import (
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types"
+	"golang.org/x/net/proxy"
 )
 
 // ClientFactory é responsável por criar clientes WhatsApp
@@ -87,8 +93,22 @@ func (cf *ClientFactory) CreateClient(session *entity.Session) (*WhatsAppClient,
 		return nil, fmt.Errorf("erro ao criar device store para sessão %s", session.ID)
 	}
 
-	// Criar cliente whatsmeow nativo
+	// Configurar proxy se disponível
+	if session.ProxyConfig != nil {
+		logger.Info("Configurando proxy para sessão '%s': %s://%s:%d",
+			session.Name, session.ProxyConfig.Type, session.ProxyConfig.Host, session.ProxyConfig.Port)
+
+		if err := cf.configureProxy(session.ProxyConfig); err != nil {
+			logger.Error("Erro ao configurar proxy para sessão '%s': %v", session.Name, err)
+			return nil, fmt.Errorf("erro ao configurar proxy: %w", err)
+		}
+	}
+
+	// Criar cliente whatsmeow nativo com configurações otimizadas
 	nativeClient := whatsmeow.NewClient(deviceStore, logger.ForWhatsApp())
+
+	// Configurar cliente para reduzir warnings de mídia
+	cf.configureClientForMediaOptimization(nativeClient)
 
 	// Verificar se já está logado
 	isLoggedIn := nativeClient.Store.ID != nil
@@ -191,4 +211,182 @@ func (cf *ClientFactory) ConnectOnStartup(sessionManager *SessionManager) error 
 	}
 
 	return nil
+}
+
+// configureProxy configura o proxy para o cliente WhatsApp
+func (cf *ClientFactory) configureProxy(proxyConfig *entity.ProxyConfig) error {
+	if proxyConfig == nil {
+		return nil
+	}
+
+	// Validar configuração de proxy
+	if err := cf.sessionDomainService.ValidateProxyConfig(proxyConfig); err != nil {
+		return fmt.Errorf("configuração de proxy inválida: %w", err)
+	}
+
+	// Construir URL do proxy
+	proxyURL := cf.buildProxyURL(proxyConfig)
+
+	// Configurar proxy baseado no tipo
+	switch proxyConfig.Type {
+	case "http":
+		return cf.configureHTTPProxy(proxyURL)
+	case "socks5":
+		return cf.configureSOCKS5Proxy(proxyURL, proxyConfig)
+	default:
+		return fmt.Errorf("tipo de proxy não suportado: %s", proxyConfig.Type)
+	}
+}
+
+// buildProxyURL constrói a URL do proxy
+func (cf *ClientFactory) buildProxyURL(proxyConfig *entity.ProxyConfig) string {
+	if proxyConfig.Username != "" && proxyConfig.Password != "" {
+		return fmt.Sprintf("%s://%s:%s@%s:%d",
+			proxyConfig.Type,
+			url.QueryEscape(proxyConfig.Username),
+			url.QueryEscape(proxyConfig.Password),
+			proxyConfig.Host,
+			proxyConfig.Port)
+	}
+
+	return fmt.Sprintf("%s://%s:%d",
+		proxyConfig.Type,
+		proxyConfig.Host,
+		proxyConfig.Port)
+}
+
+// configureHTTPProxy configura proxy HTTP/HTTPS com bypass para CDNs do WhatsApp
+func (cf *ClientFactory) configureHTTPProxy(proxyURL string) error {
+	// Configurar variáveis de ambiente para proxy HTTP
+	// Esta é a abordagem mais compatível com whatsmeow
+	os.Setenv("HTTP_PROXY", proxyURL)
+	os.Setenv("HTTPS_PROXY", proxyURL)
+
+	// Também configurar o transport padrão
+	proxyURLParsed, err := url.Parse(proxyURL)
+	if err != nil {
+		return fmt.Errorf("erro ao parsear URL do proxy: %w", err)
+	}
+
+	// Configurar transport customizado com bypass para CDNs do WhatsApp
+	transport := &http.Transport{
+		Proxy: func(req *http.Request) (*url.URL, error) {
+			// Verificar se o host deve fazer bypass
+			if cf.shouldBypassProxy(req.URL.Host) {
+				logger.Debug("Bypass do proxy para host: %s", req.URL.Host)
+				return nil, nil // Conexão direta
+			}
+
+			// Usar proxy para outros hosts
+			return proxyURLParsed, nil
+		},
+		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   10,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second,
+	}
+
+	// Aplicar ao cliente HTTP padrão (usado pelo whatsmeow)
+	http.DefaultTransport = transport
+
+	logger.Info("Proxy HTTP configurado com bypass para CDNs: %s", proxyURL)
+	return nil
+}
+
+// configureSOCKS5Proxy configura proxy SOCKS5 com bypass para CDNs do WhatsApp
+func (cf *ClientFactory) configureSOCKS5Proxy(proxyURL string, proxyConfig *entity.ProxyConfig) error {
+	// Para SOCKS5, precisamos usar uma abordagem diferente
+	proxyAddr := fmt.Sprintf("%s:%d", proxyConfig.Host, proxyConfig.Port)
+
+	// Criar dialer SOCKS5
+	var auth *proxy.Auth
+	if proxyConfig.Username != "" && proxyConfig.Password != "" {
+		auth = &proxy.Auth{
+			User:     proxyConfig.Username,
+			Password: proxyConfig.Password,
+		}
+	}
+
+	dialer, err := proxy.SOCKS5("tcp", proxyAddr, auth, proxy.Direct)
+	if err != nil {
+		return fmt.Errorf("erro ao criar dialer SOCKS5: %w", err)
+	}
+
+	// Configurar transport com dialer SOCKS5 e bypass para CDNs
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			// Extrair host do endereço
+			host, _, err := net.SplitHostPort(addr)
+			if err != nil {
+				host = addr
+			}
+
+			// Verificar se o host deve fazer bypass
+			if cf.shouldBypassProxy(host) {
+				logger.Debug("Bypass do proxy SOCKS5 para host: %s", host)
+				// Usar dialer direto
+				directDialer := &net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}
+				return directDialer.DialContext(ctx, network, addr)
+			}
+
+			// Usar proxy SOCKS5 para outros hosts
+			return dialer.Dial(network, addr)
+		},
+		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   10,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second,
+	}
+
+	// Aplicar ao cliente HTTP padrão
+	http.DefaultTransport = transport
+
+	// Também configurar variáveis de ambiente para compatibilidade
+	os.Setenv("HTTP_PROXY", proxyURL)
+	os.Setenv("HTTPS_PROXY", proxyURL)
+
+	logger.Info("Proxy SOCKS5 configurado com bypass para CDNs: %s", proxyAddr)
+	return nil
+}
+
+// getWhatsAppBypassHosts retorna a lista de hosts do WhatsApp que devem fazer bypass do proxy
+func (cf *ClientFactory) getWhatsAppBypassHosts() []string {
+	return []string{
+		"cdn.whatsapp.net",
+		"media-lga3-1.cdn.whatsapp.net",
+		"media-lga3-2.cdn.whatsapp.net",
+		"media-iad3-1.cdn.whatsapp.net",
+		"media-iad3-2.cdn.whatsapp.net",
+		"media-sjc3-1.cdn.whatsapp.net",
+		"media-sjc3-2.cdn.whatsapp.net",
+		"media-dfw5-1.cdn.whatsapp.net",
+		"media-dfw5-2.cdn.whatsapp.net",
+		"mmg.whatsapp.net",
+		"pps.whatsapp.net",
+		"web.whatsapp.com",
+		"static.whatsapp.net",
+	}
+}
+
+// shouldBypassProxy verifica se um host deve fazer bypass do proxy
+func (cf *ClientFactory) shouldBypassProxy(host string) bool {
+	bypassHosts := cf.getWhatsAppBypassHosts()
+	for _, bypassHost := range bypassHosts {
+		if strings.Contains(host, bypassHost) {
+			return true
+		}
+	}
+	return false
+}
+
+// configureClientForMediaOptimization configura o cliente para otimizar downloads de mídia
+func (cf *ClientFactory) configureClientForMediaOptimization(_ *whatsmeow.Client) {
+	// O whatsmeow usa o http.DefaultTransport que já foi configurado com bypass
+	// Apenas log informativo de que a configuração foi aplicada
+	logger.Debug("Cliente WhatsApp configurado com proxy bypass para CDNs de mídia")
 }

@@ -53,14 +53,14 @@ func NewSessionHandler(
 
 // CreateSession cria uma nova sessão
 // @Summary Cria uma nova sessão WhatsApp
-// @Description Cria uma nova sessão WhatsApp com as configurações especificadas
+// @Description Cria uma nova sessão WhatsApp com as configurações especificadas (webhook URL e proxy opcionais)
 // @Tags sessions
 // @Accept json
 // @Produce json
-// @Param request body requests.CreateSessionRequest true "Dados da sessão"
-// @Success 200 {object} responses.APIResponse{data=entity.Session} "Sessão criada com sucesso"
-// @Failure 400 {object} responses.APIResponse "Dados inválidos"
-// @Failure 500 {object} responses.APIResponse "Erro interno do servidor"
+// @Param request body requests.CreateSessionRequest true "Dados da sessão (nome obrigatório, webhookUrl e proxy opcionais)"
+// @Success 200 {object} map[string]interface{} "Sessão criada com sucesso"
+// @Failure 400 {object} map[string]interface{} "Dados inválidos"
+// @Failure 500 {object} map[string]interface{} "Erro interno do servidor"
 // @Router /sessions/add [post]
 func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
 	var req requests.CreateSessionRequest
@@ -96,8 +96,8 @@ func (h *SessionHandler) CreateSession(w http.ResponseWriter, r *http.Request) {
 // @Tags sessions
 // @Accept json
 // @Produce json
-// @Success 200 {object} responses.APIResponse{data=[]entity.Session} "Lista de sessões"
-// @Failure 500 {object} responses.APIResponse "Erro interno do servidor"
+// @Success 200 {object} map[string]interface{} "Lista de sessões"
+// @Failure 500 {object} map[string]interface{} "Erro interno do servidor"
 // @Router /sessions [get]
 func (h *SessionHandler) ListSessions(w http.ResponseWriter, r *http.Request) {
 	sessions, err := h.listSessionsUC.Execute()
@@ -121,13 +121,13 @@ func (h *SessionHandler) ListSessions(w http.ResponseWriter, r *http.Request) {
 // @Tags sessions
 // @Accept json
 // @Produce json
-// @Param sessionId path string true "ID da sessão"
-// @Success 200 {object} responses.APIResponse "Sessão conectada com sucesso"
-// @Failure 404 {object} responses.APIResponse "Sessão não encontrada"
-// @Failure 500 {object} responses.APIResponse "Erro interno do servidor"
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Success 200 {object} map[string]interface{} "Sessão conectada com sucesso"
+// @Failure 404 {object} map[string]interface{} "Sessão não encontrada"
+// @Failure 500 {object} map[string]interface{} "Erro interno do servidor"
 // @Router /sessions/{sessionId}/connect [post]
 func (h *SessionHandler) ConnectSession(w http.ResponseWriter, r *http.Request) {
-	sessionID := chi.URLParam(r, "sessionId")
+	sessionID := chi.URLParam(r, "sessionID")
 
 	err := h.connectSessionUC.Execute(sessionID)
 	if err != nil {
@@ -150,13 +150,13 @@ func (h *SessionHandler) ConnectSession(w http.ResponseWriter, r *http.Request) 
 // @Tags sessions
 // @Accept json
 // @Produce json
-// @Param sessionId path string true "ID da sessão"
-// @Success 200 {object} responses.APIResponse{data=object} "QR Code gerado com sucesso"
-// @Failure 404 {object} responses.APIResponse "Sessão não encontrada"
-// @Failure 500 {object} responses.APIResponse "Erro interno do servidor"
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Success 200 {object} map[string]interface{} "QR Code gerado com sucesso"
+// @Failure 404 {object} map[string]interface{} "Sessão não encontrada"
+// @Failure 500 {object} map[string]interface{} "Erro interno do servidor"
 // @Router /sessions/{sessionId}/qr [get]
 func (h *SessionHandler) GetQRCode(w http.ResponseWriter, r *http.Request) {
-	sessionID := chi.URLParam(r, "sessionId")
+	sessionID := chi.URLParam(r, "sessionID")
 
 	qrResponse, err := h.getQRCodeUC.Execute(sessionID)
 	if err != nil {
@@ -179,13 +179,13 @@ func (h *SessionHandler) GetQRCode(w http.ResponseWriter, r *http.Request) {
 // @Tags sessions
 // @Accept json
 // @Produce json
-// @Param sessionId path string true "ID da sessão"
-// @Success 200 {object} responses.APIResponse "Sessão deletada com sucesso"
-// @Failure 404 {object} responses.APIResponse "Sessão não encontrada"
-// @Failure 500 {object} responses.APIResponse "Erro interno do servidor"
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Success 200 {object} map[string]interface{} "Sessão deletada com sucesso"
+// @Failure 404 {object} map[string]interface{} "Sessão não encontrada"
+// @Failure 500 {object} map[string]interface{} "Erro interno do servidor"
 // @Router /sessions/{sessionId} [delete]
 func (h *SessionHandler) DeleteSession(w http.ResponseWriter, r *http.Request) {
-	sessionID := chi.URLParam(r, "sessionId")
+	sessionID := chi.URLParam(r, "sessionID")
 
 	err := h.deleteSessionUC.Execute(sessionID)
 	if err != nil {
@@ -208,13 +208,13 @@ func (h *SessionHandler) DeleteSession(w http.ResponseWriter, r *http.Request) {
 // @Tags sessions
 // @Accept json
 // @Produce json
-// @Param sessionId path string true "ID da sessão"
-// @Success 200 {object} responses.APIResponse "Logout realizado com sucesso"
-// @Failure 404 {object} responses.APIResponse "Sessão não encontrada"
-// @Failure 500 {object} responses.APIResponse "Erro interno do servidor"
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Success 200 {object} map[string]interface{} "Logout realizado com sucesso"
+// @Failure 404 {object} map[string]interface{} "Sessão não encontrada"
+// @Failure 500 {object} map[string]interface{} "Erro interno do servidor"
 // @Router /sessions/{sessionId}/logout [post]
 func (h *SessionHandler) LogoutSession(w http.ResponseWriter, r *http.Request) {
-	sessionID := chi.URLParam(r, "sessionId")
+	sessionID := chi.URLParam(r, "sessionID")
 
 	err := h.logoutSessionUC.Execute(sessionID)
 	if err != nil {
@@ -237,13 +237,13 @@ func (h *SessionHandler) LogoutSession(w http.ResponseWriter, r *http.Request) {
 // @Tags sessions
 // @Accept json
 // @Produce json
-// @Param sessionId path string true "ID da sessão"
-// @Success 200 {object} responses.APIResponse{data=entity.Session} "Informações da sessão"
-// @Failure 404 {object} responses.APIResponse "Sessão não encontrada"
-// @Failure 500 {object} responses.APIResponse "Erro interno do servidor"
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Success 200 {object} map[string]interface{} "Informações da sessão"
+// @Failure 404 {object} map[string]interface{} "Sessão não encontrada"
+// @Failure 500 {object} map[string]interface{} "Erro interno do servidor"
 // @Router /sessions/{sessionId} [get]
 func (h *SessionHandler) GetSessionInfo(w http.ResponseWriter, r *http.Request) {
-	sessionID := chi.URLParam(r, "sessionId")
+	sessionID := chi.URLParam(r, "sessionID")
 
 	sessionInfo, err := h.getSessionInfoUC.Execute(sessionID)
 	if err != nil {
@@ -266,15 +266,15 @@ func (h *SessionHandler) GetSessionInfo(w http.ResponseWriter, r *http.Request) 
 // @Tags sessions
 // @Accept json
 // @Produce json
-// @Param sessionId path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.PairPhoneRequest true "Dados do telefone"
-// @Success 200 {object} responses.APIResponse{data=object} "Código de emparelhamento gerado"
-// @Failure 400 {object} responses.APIResponse "Dados inválidos"
-// @Failure 404 {object} responses.APIResponse "Sessão não encontrada"
-// @Failure 500 {object} responses.APIResponse "Erro interno do servidor"
+// @Success 200 {object} map[string]interface{} "Código de emparelhamento gerado"
+// @Failure 400 {object} map[string]interface{} "Dados inválidos"
+// @Failure 404 {object} map[string]interface{} "Sessão não encontrada"
+// @Failure 500 {object} map[string]interface{} "Erro interno do servidor"
 // @Router /sessions/{sessionId}/pair [post]
 func (h *SessionHandler) PairPhone(w http.ResponseWriter, r *http.Request) {
-	sessionID := chi.URLParam(r, "sessionId")
+	sessionID := chi.URLParam(r, "sessionID")
 
 	var req requests.PairPhoneRequest
 
@@ -308,15 +308,15 @@ func (h *SessionHandler) PairPhone(w http.ResponseWriter, r *http.Request) {
 // @Tags sessions
 // @Accept json
 // @Produce json
-// @Param sessionId path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SetProxyRequest true "Configurações do proxy"
-// @Success 200 {object} responses.APIResponse "Proxy configurado com sucesso"
-// @Failure 400 {object} responses.APIResponse "Dados inválidos"
-// @Failure 404 {object} responses.APIResponse "Sessão não encontrada"
-// @Failure 500 {object} responses.APIResponse "Erro interno do servidor"
+// @Success 200 {object} map[string]interface{} "Proxy configurado com sucesso"
+// @Failure 400 {object} map[string]interface{} "Dados inválidos"
+// @Failure 404 {object} map[string]interface{} "Sessão não encontrada"
+// @Failure 500 {object} map[string]interface{} "Erro interno do servidor"
 // @Router /sessions/{sessionId}/proxy [post]
 func (h *SessionHandler) SetProxy(w http.ResponseWriter, r *http.Request) {
-	sessionID := chi.URLParam(r, "sessionId")
+	sessionID := chi.URLParam(r, "sessionID")
 
 	var req requests.SetProxyRequest
 

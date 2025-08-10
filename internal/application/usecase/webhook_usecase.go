@@ -31,6 +31,25 @@ func (uc *SetWebhookUseCase) Execute(sessionID string, req *requests.SetWebhookR
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
+	// Verificar se é para remover o webhook
+	if req.WebhookURL == "" || (req.Enabled != nil && !*req.Enabled) {
+		// Remover webhook
+		session.WebhookURL = ""
+		session.Events = ""
+
+		err = uc.sessionRepo.Update(session)
+		if err != nil {
+			return nil, fmt.Errorf("erro ao remover webhook: %w", err)
+		}
+
+		logger.Info("Webhook removido - Session: %s", sessionID)
+
+		return &responses.WebhookResponse{
+			Webhook: "",
+			Events:  []string{},
+		}, nil
+	}
+
 	// Atualizar webhook na sessão
 	session.WebhookURL = req.WebhookURL
 	if len(req.Events) > 0 {

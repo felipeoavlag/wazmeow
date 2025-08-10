@@ -78,7 +78,7 @@ func NewMessageHandlers(
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SendTextMessageRequest true "Dados da mensagem"
 // @Success 200 {object} map[string]interface{} "Mensagem enviada com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -144,7 +144,7 @@ func (h *MessageHandlers) SendTextMessage(w http.ResponseWriter, r *http.Request
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SendMediaMessageRequest true "Dados da mídia"
 // @Success 200 {object} map[string]interface{} "Mídia enviada com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -210,7 +210,7 @@ func (h *MessageHandlers) SendMediaMessage(w http.ResponseWriter, r *http.Reques
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SendImageMessageRequest true "Dados da imagem"
 // @Success 200 {object} map[string]interface{} "Imagem enviada com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -273,7 +273,7 @@ func (h *MessageHandlers) SendImageMessage(w http.ResponseWriter, r *http.Reques
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SendAudioMessageRequest true "Dados do áudio"
 // @Success 200 {object} map[string]interface{} "Áudio enviado com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -336,7 +336,7 @@ func (h *MessageHandlers) SendAudioMessage(w http.ResponseWriter, r *http.Reques
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SendDocumentMessageRequest true "Dados do documento"
 // @Success 200 {object} map[string]interface{} "Documento enviado com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -405,7 +405,7 @@ func (h *MessageHandlers) SendDocumentMessage(w http.ResponseWriter, r *http.Req
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SendVideoMessageRequest true "Dados do vídeo"
 // @Success 200 {object} map[string]interface{} "Vídeo enviado com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -468,7 +468,7 @@ func (h *MessageHandlers) SendVideoMessage(w http.ResponseWriter, r *http.Reques
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SendStickerMessageRequest true "Dados do sticker"
 // @Success 200 {object} map[string]interface{} "Sticker enviado com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -531,7 +531,7 @@ func (h *MessageHandlers) SendStickerMessage(w http.ResponseWriter, r *http.Requ
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SendLocationMessageRequest true "Dados da localização"
 // @Success 200 {object} map[string]interface{} "Localização enviada com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -600,7 +600,7 @@ func (h *MessageHandlers) SendLocationMessage(w http.ResponseWriter, r *http.Req
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SendContactMessageRequest true "Dados do contato"
 // @Success 200 {object} map[string]interface{} "Contato enviado com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -669,7 +669,7 @@ func (h *MessageHandlers) SendContactMessage(w http.ResponseWriter, r *http.Requ
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SendButtonsMessageRequest true "Dados da mensagem com botões"
 // @Success 200 {object} map[string]interface{} "Mensagem com botões enviada com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -744,7 +744,7 @@ func (h *MessageHandlers) SendButtonsMessage(w http.ResponseWriter, r *http.Requ
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SendListMessageRequest true "Dados da mensagem de lista"
 // @Success 200 {object} map[string]interface{} "Lista enviada com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -825,7 +825,7 @@ func (h *MessageHandlers) SendListMessage(w http.ResponseWriter, r *http.Request
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SendPollMessageRequest true "Dados da enquete"
 // @Success 200 {object} map[string]interface{} "Enquete enviada com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -894,7 +894,7 @@ func (h *MessageHandlers) SendPollMessage(w http.ResponseWriter, r *http.Request
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.SendEditMessageRequest true "Dados da edição"
 // @Success 200 {object} map[string]interface{} "Mensagem editada com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -963,7 +963,7 @@ func (h *MessageHandlers) SendEditMessage(w http.ResponseWriter, r *http.Request
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.DeleteMessageRequest true "Dados da mensagem a deletar"
 // @Success 200 {object} map[string]interface{} "Mensagem deletada com sucesso"
 // @Failure 400 {string} string "Dados inválidos"
@@ -1026,7 +1026,7 @@ func (h *MessageHandlers) DeleteMessage(w http.ResponseWriter, r *http.Request) 
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param sessionID path string true "ID da sessão"
+// @Param sessionID path string true "ID ou nome da sessão"
 // @Param request body requests.ReactMessageRequest true "Dados da reação"
 // @Success 200 {object} map[string]interface{} "Reação adicionada com sucesso"
 // @Failure 400 {string} string "Dados inválidos"

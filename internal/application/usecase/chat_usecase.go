@@ -17,6 +17,7 @@ import (
 type SendPresenceUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewSendPresenceUseCase cria uma nova instância do use case
@@ -24,17 +25,18 @@ func NewSendPresenceUseCase(sessionRepo repository.SessionRepository, sessionMan
 	return &SendPresenceUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a definição de presença global
 func (uc *SendPresenceUseCase) Execute(sessionID string, req *requests.SendPresenceRequest) (*responses.PresenceResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -69,6 +71,7 @@ func (uc *SendPresenceUseCase) Execute(sessionID string, req *requests.SendPrese
 type ChatPresenceUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewChatPresenceUseCase cria uma nova instância do use case
@@ -76,17 +79,18 @@ func NewChatPresenceUseCase(sessionRepo repository.SessionRepository, sessionMan
 	return &ChatPresenceUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a definição de presença em chat específico
 func (uc *ChatPresenceUseCase) Execute(sessionID string, req *requests.ChatPresenceRequest) (*responses.ChatPresenceResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -133,6 +137,7 @@ func (uc *ChatPresenceUseCase) Execute(sessionID string, req *requests.ChatPrese
 type MarkReadUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewMarkReadUseCase cria uma nova instância do use case
@@ -140,17 +145,18 @@ func NewMarkReadUseCase(sessionRepo repository.SessionRepository, sessionManager
 	return &MarkReadUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a marcação de mensagens como lidas
 func (uc *MarkReadUseCase) Execute(sessionID string, req *requests.MarkReadRequest) (*responses.MarkReadResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -185,6 +191,7 @@ func (uc *MarkReadUseCase) Execute(sessionID string, req *requests.MarkReadReque
 type DownloadImageUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewDownloadImageUseCase cria uma nova instância do use case
@@ -192,17 +199,18 @@ func NewDownloadImageUseCase(sessionRepo repository.SessionRepository, sessionMa
 	return &DownloadImageUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa o download de imagem
 func (uc *DownloadImageUseCase) Execute(sessionID string, req *requests.DownloadImageRequest) (*responses.DownloadResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -226,6 +234,7 @@ func (uc *DownloadImageUseCase) Execute(sessionID string, req *requests.Download
 type DownloadVideoUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewDownloadVideoUseCase cria uma nova instância do use case
@@ -233,17 +242,18 @@ func NewDownloadVideoUseCase(sessionRepo repository.SessionRepository, sessionMa
 	return &DownloadVideoUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa o download de vídeo
 func (uc *DownloadVideoUseCase) Execute(sessionID string, req *requests.DownloadVideoRequest) (*responses.DownloadResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -265,6 +275,7 @@ func (uc *DownloadVideoUseCase) Execute(sessionID string, req *requests.Download
 type DownloadAudioUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewDownloadAudioUseCase cria uma nova instância do use case
@@ -272,17 +283,18 @@ func NewDownloadAudioUseCase(sessionRepo repository.SessionRepository, sessionMa
 	return &DownloadAudioUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa o download de áudio
 func (uc *DownloadAudioUseCase) Execute(sessionID string, req *requests.DownloadAudioRequest) (*responses.DownloadResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -304,6 +316,7 @@ func (uc *DownloadAudioUseCase) Execute(sessionID string, req *requests.Download
 type DownloadDocumentUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewDownloadDocumentUseCase cria uma nova instância do use case
@@ -311,17 +324,18 @@ func NewDownloadDocumentUseCase(sessionRepo repository.SessionRepository, sessio
 	return &DownloadDocumentUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa o download de documento
 func (uc *DownloadDocumentUseCase) Execute(sessionID string, req *requests.DownloadDocumentRequest) (*responses.DownloadResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}

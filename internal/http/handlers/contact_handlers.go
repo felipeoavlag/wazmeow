@@ -35,6 +35,17 @@ func NewUserHandlers(
 }
 
 // GetUserInfo obtém informações do usuário
+// @Summary Obtém informações de um usuário
+// @Description Retorna informações detalhadas de um usuário WhatsApp específico
+// @Tags contacts
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.GetUserInfoRequest true "Dados do usuário"
+// @Success 200 {object} map[string]interface{} "Informações do usuário obtidas com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /contact/{sessionID}/info [post]
 func (h *UserHandlers) GetUserInfo(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -73,6 +84,17 @@ func (h *UserHandlers) GetUserInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 // CheckUser verifica se usuário existe
+// @Summary Verifica se um usuário existe no WhatsApp
+// @Description Verifica se um número de telefone possui conta WhatsApp ativa
+// @Tags contacts
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.CheckUserRequest true "Dados do usuário para verificar"
+// @Success 200 {object} map[string]interface{} "Usuário verificado com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /contact/{sessionID}/check [post]
 func (h *UserHandlers) CheckUser(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -111,6 +133,17 @@ func (h *UserHandlers) CheckUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetAvatar obtém avatar do usuário
+// @Summary Obtém avatar de um usuário
+// @Description Baixa a foto de perfil de um usuário WhatsApp e retorna em base64
+// @Tags contacts
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.GetAvatarRequest true "Dados do usuário"
+// @Success 200 {object} map[string]interface{} "Avatar obtido com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /contact/{sessionID}/avatar [post]
 func (h *UserHandlers) GetAvatar(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {
@@ -149,6 +182,16 @@ func (h *UserHandlers) GetAvatar(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetContacts obtém lista de contatos
+// @Summary Obtém lista de contatos
+// @Description Retorna a lista de contatos do usuário WhatsApp
+// @Tags contacts
+// @Accept json
+// @Produce json
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Success 200 {object} map[string]interface{} "Contatos obtidos com sucesso"
+// @Failure 400 {string} string "Dados inválidos"
+// @Failure 500 {string} string "Erro interno do servidor"
+// @Router /contact/{sessionID}/list [get]
 func (h *UserHandlers) GetContacts(w http.ResponseWriter, r *http.Request) {
 	sessionID := chi.URLParam(r, "sessionID")
 	if sessionID == "" {

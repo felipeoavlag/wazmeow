@@ -17,6 +17,7 @@ import (
 type CreateGroupUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewCreateGroupUseCase cria uma nova instância do use case
@@ -24,17 +25,18 @@ func NewCreateGroupUseCase(sessionRepo repository.SessionRepository, sessionMana
 	return &CreateGroupUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a criação do grupo
 func (uc *CreateGroupUseCase) Execute(sessionID string, req *requests.CreateGroupRequest) (*responses.GroupResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -76,6 +78,7 @@ func (uc *CreateGroupUseCase) Execute(sessionID string, req *requests.CreateGrou
 type SetGroupPhotoUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewSetGroupPhotoUseCase cria uma nova instância do use case
@@ -83,17 +86,18 @@ func NewSetGroupPhotoUseCase(sessionRepo repository.SessionRepository, sessionMa
 	return &SetGroupPhotoUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a definição da foto do grupo
 func (uc *SetGroupPhotoUseCase) Execute(sessionID string, req *requests.SetGroupPhotoRequest) (*responses.GroupResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -131,6 +135,7 @@ func (uc *SetGroupPhotoUseCase) Execute(sessionID string, req *requests.SetGroup
 type UpdateGroupParticipantsUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewUpdateGroupParticipantsUseCase cria uma nova instância do use case
@@ -138,17 +143,18 @@ func NewUpdateGroupParticipantsUseCase(sessionRepo repository.SessionRepository,
 	return &UpdateGroupParticipantsUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a atualização dos participantes do grupo
 func (uc *UpdateGroupParticipantsUseCase) Execute(sessionID string, req *requests.UpdateGroupParticipantsRequest) (*responses.GroupResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -210,6 +216,7 @@ func (uc *UpdateGroupParticipantsUseCase) Execute(sessionID string, req *request
 type LeaveGroupUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewLeaveGroupUseCase cria uma nova instância do use case
@@ -217,17 +224,18 @@ func NewLeaveGroupUseCase(sessionRepo repository.SessionRepository, sessionManag
 	return &LeaveGroupUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a saída do grupo
 func (uc *LeaveGroupUseCase) Execute(sessionID string, req *requests.LeaveGroupRequest) (*responses.GroupResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -258,6 +266,7 @@ func (uc *LeaveGroupUseCase) Execute(sessionID string, req *requests.LeaveGroupR
 type JoinGroupUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewJoinGroupUseCase cria uma nova instância do use case
@@ -265,17 +274,18 @@ func NewJoinGroupUseCase(sessionRepo repository.SessionRepository, sessionManage
 	return &JoinGroupUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a entrada no grupo via link
 func (uc *JoinGroupUseCase) Execute(sessionID string, req *requests.JoinGroupRequest) (*responses.GroupResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -301,6 +311,7 @@ func (uc *JoinGroupUseCase) Execute(sessionID string, req *requests.JoinGroupReq
 type GetGroupInfoUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewGetGroupInfoUseCase cria uma nova instância do use case
@@ -308,17 +319,18 @@ func NewGetGroupInfoUseCase(sessionRepo repository.SessionRepository, sessionMan
 	return &GetGroupInfoUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a obtenção de informações do grupo
 func (uc *GetGroupInfoUseCase) Execute(sessionID string, req *requests.GetGroupInfoRequest) (*responses.GroupInfoResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -364,6 +376,7 @@ func (uc *GetGroupInfoUseCase) Execute(sessionID string, req *requests.GetGroupI
 type ListGroupsUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewListGroupsUseCase cria uma nova instância do use case
@@ -371,17 +384,18 @@ func NewListGroupsUseCase(sessionRepo repository.SessionRepository, sessionManag
 	return &ListGroupsUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a listagem de grupos
 func (uc *ListGroupsUseCase) Execute(sessionID string) (*responses.GroupListResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -415,6 +429,7 @@ func (uc *ListGroupsUseCase) Execute(sessionID string) (*responses.GroupListResp
 type GetGroupInviteLinkUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewGetGroupInviteLinkUseCase cria uma nova instância do use case
@@ -422,17 +437,18 @@ func NewGetGroupInviteLinkUseCase(sessionRepo repository.SessionRepository, sess
 	return &GetGroupInviteLinkUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a obtenção do link de convite do grupo
 func (uc *GetGroupInviteLinkUseCase) Execute(sessionID string, req *requests.GetGroupInviteLinkRequest) (*responses.GroupInviteLinkResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -463,6 +479,7 @@ func (uc *GetGroupInviteLinkUseCase) Execute(sessionID string, req *requests.Get
 type RevokeGroupInviteLinkUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewRevokeGroupInviteLinkUseCase cria uma nova instância do use case
@@ -470,17 +487,18 @@ func NewRevokeGroupInviteLinkUseCase(sessionRepo repository.SessionRepository, s
 	return &RevokeGroupInviteLinkUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a revogação do link de convite do grupo
 func (uc *RevokeGroupInviteLinkUseCase) Execute(sessionID string, req *requests.RevokeGroupInviteLinkRequest) (*responses.GroupInviteLinkResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -512,6 +530,7 @@ func (uc *RevokeGroupInviteLinkUseCase) Execute(sessionID string, req *requests.
 type SetGroupNameUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewSetGroupNameUseCase cria uma nova instância do use case
@@ -519,17 +538,18 @@ func NewSetGroupNameUseCase(sessionRepo repository.SessionRepository, sessionMan
 	return &SetGroupNameUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a definição do nome do grupo
 func (uc *SetGroupNameUseCase) Execute(sessionID string, req *requests.SetGroupNameRequest) (*responses.GroupResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -561,6 +581,7 @@ func (uc *SetGroupNameUseCase) Execute(sessionID string, req *requests.SetGroupN
 type SetGroupTopicUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewSetGroupTopicUseCase cria uma nova instância do use case
@@ -568,17 +589,18 @@ func NewSetGroupTopicUseCase(sessionRepo repository.SessionRepository, sessionMa
 	return &SetGroupTopicUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a definição do tópico do grupo
 func (uc *SetGroupTopicUseCase) Execute(sessionID string, req *requests.SetGroupTopicRequest) (*responses.GroupResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}

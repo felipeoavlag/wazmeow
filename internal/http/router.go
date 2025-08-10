@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"wazmeow/internal/container"
-	"wazmeow/internal/http/handler"
 	"wazmeow/internal/http/handlers"
 
 	"github.com/go-chi/chi/v5"
@@ -75,11 +74,9 @@ func NewRouter(container *container.Container) http.Handler {
 	)
 
 	// Criar handler de webhook
-	webhookHandler := handler.NewWebhookHandler(
+	webhookHandler := handlers.NewWebhookHandler(
 		container.GetSetWebhookUseCase(),
 		container.GetGetWebhookUseCase(),
-		container.GetUpdateWebhookUseCase(),
-		container.GetDeleteWebhookUseCase(),
 	)
 
 	// Rotas de sessões
@@ -87,7 +84,7 @@ func NewRouter(container *container.Container) http.Handler {
 		r.Get("/", sessionHandler.ListSessions)
 		r.Post("/add", sessionHandler.CreateSession)
 
-		r.Route("/{sessionId}", func(r chi.Router) {
+		r.Route("/{sessionID}", func(r chi.Router) {
 			r.Get("/", sessionHandler.GetSessionInfo)
 			r.Delete("/", sessionHandler.DeleteSession)
 			r.Post("/connect", sessionHandler.ConnectSession)
@@ -98,11 +95,8 @@ func NewRouter(container *container.Container) http.Handler {
 
 			// Rotas de webhook dentro de sessions
 			r.Route("/webhook", func(r chi.Router) {
-				r.Post("/", webhookHandler.SetWebhook)
-				r.Get("/", webhookHandler.GetWebhook)
-				r.Put("/", webhookHandler.UpdateWebhook)
-				r.Delete("/", webhookHandler.DeleteWebhook)
-				r.Post("/test", webhookHandler.TestWebhook)
+				r.Post("/set", webhookHandler.SetWebhook)
+				r.Get("/find", webhookHandler.FindWebhook)
 			})
 		})
 	})
@@ -160,11 +154,8 @@ func NewRouter(container *container.Container) http.Handler {
 		r.Get("/events", webhookHandler.GetSupportedEvents)
 
 		r.Route("/{sessionID}", func(r chi.Router) {
-			r.Post("/", webhookHandler.SetWebhook)
-			r.Get("/", webhookHandler.GetWebhook)
-			r.Put("/", webhookHandler.UpdateWebhook)
-			r.Delete("/", webhookHandler.DeleteWebhook)
-			r.Post("/test", webhookHandler.TestWebhook)
+			r.Post("/set", webhookHandler.SetWebhook)
+			r.Get("/find", webhookHandler.FindWebhook)
 		})
 	})
 

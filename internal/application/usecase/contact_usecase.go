@@ -18,6 +18,7 @@ import (
 type GetUserInfoUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewGetUserInfoUseCase cria uma nova instância do use case
@@ -25,17 +26,18 @@ func NewGetUserInfoUseCase(sessionRepo repository.SessionRepository, sessionMana
 	return &GetUserInfoUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a obtenção de informações do usuário
 func (uc *GetUserInfoUseCase) Execute(sessionID string, req *requests.GetUserInfoRequest) (*responses.UserInfoResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -69,6 +71,7 @@ func (uc *GetUserInfoUseCase) Execute(sessionID string, req *requests.GetUserInf
 type CheckUserUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewCheckUserUseCase cria uma nova instância do use case
@@ -76,17 +79,18 @@ func NewCheckUserUseCase(sessionRepo repository.SessionRepository, sessionManage
 	return &CheckUserUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a verificação de usuário
 func (uc *CheckUserUseCase) Execute(sessionID string, req *requests.CheckUserRequest) (*responses.CheckUserResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -134,6 +138,7 @@ func (uc *CheckUserUseCase) Execute(sessionID string, req *requests.CheckUserReq
 type GetAvatarUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewGetAvatarUseCase cria uma nova instância do use case
@@ -141,17 +146,18 @@ func NewGetAvatarUseCase(sessionRepo repository.SessionRepository, sessionManage
 	return &GetAvatarUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a obtenção do avatar do usuário
 func (uc *GetAvatarUseCase) Execute(sessionID string, req *requests.GetAvatarRequest) (*responses.AvatarResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
@@ -184,6 +190,7 @@ func (uc *GetAvatarUseCase) Execute(sessionID string, req *requests.GetAvatarReq
 type GetContactsUseCase struct {
 	sessionRepo    repository.SessionRepository
 	sessionManager *whatsapp.SessionManager
+	sessionFinder  *SessionFinder
 }
 
 // NewGetContactsUseCase cria uma nova instância do use case
@@ -191,17 +198,18 @@ func NewGetContactsUseCase(sessionRepo repository.SessionRepository, sessionMana
 	return &GetContactsUseCase{
 		sessionRepo:    sessionRepo,
 		sessionManager: sessionManager,
+		sessionFinder:  NewSessionFinder(sessionRepo),
 	}
 }
 
 // Execute executa a obtenção da lista de contatos
 func (uc *GetContactsUseCase) Execute(sessionID string) (*responses.ContactsResponse, error) {
-	session, err := uc.sessionRepo.GetByID(sessionID)
+	session, err := uc.sessionFinder.FindSession(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("sessão não encontrada: %w", err)
 	}
 
-	client, exists := uc.sessionManager.GetClient(sessionID)
+	client, exists := uc.sessionManager.GetClient(session.ID)
 	if !exists {
 		return nil, fmt.Errorf("sessão '%s' não está conectada", session.Name)
 	}
