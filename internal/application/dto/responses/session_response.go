@@ -2,29 +2,7 @@ package responses
 
 import "wazmeow/internal/domain/entity"
 
-// SessionResponse representa uma resposta padrão para operações de sessão
-type SessionResponse struct {
-	// Indica se a operação foi bem-sucedida
-	Success bool `json:"success" example:"true"`
-	// Mensagem descritiva da operação (opcional)
-	Message string `json:"message,omitempty" example:"Operação realizada com sucesso"`
-	// Mensagem de erro caso a operação falhe (opcional)
-	Error string `json:"error,omitempty" example:"Sessão não encontrada"`
-	// Dados retornados pela operação (opcional)
-	Data interface{} `json:"data,omitempty"`
-}
 
-// APIResponse representa uma resposta padrão da API
-type APIResponse struct {
-	// Indica se a operação foi bem-sucedida
-	Success bool `json:"success" example:"true"`
-	// Mensagem descritiva da operação (opcional)
-	Message string `json:"message,omitempty" example:"Operação realizada com sucesso"`
-	// Mensagem de erro caso a operação falhe (opcional)
-	Error string `json:"error,omitempty" example:"Dados inválidos"`
-	// Dados retornados pela operação (opcional)
-	Data interface{} `json:"data,omitempty"`
-}
 
 // SessionInfo representa informações detalhadas de uma sessão
 type SessionInfo struct {

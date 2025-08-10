@@ -60,9 +60,7 @@ type SetGroupPhotoResponse struct {
 }
 
 // GroupJoinResponse representa a resposta de entrada no grupo
-type GroupJoinResponse struct {
-	Details string `json:"details"`
-}
+type GroupJoinResponse = SimpleResponse
 
 // GroupInviteInfoResponse representa a resposta de informações do convite
 type GroupInviteInfoResponse struct {
@@ -70,9 +68,7 @@ type GroupInviteInfoResponse struct {
 }
 
 // UpdateGroupParticipantsResponse representa a resposta de atualização de participantes
-type UpdateGroupParticipantsResponse struct {
-	Details string `json:"details"`
-}
+type UpdateGroupParticipantsResponse = SimpleResponse
 
 // NewsletterListResponse representa a resposta de listagem de newsletters
 type NewsletterListResponse struct {

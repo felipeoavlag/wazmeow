@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"wazmeow/internal/container"
+	"wazmeow/internal/http/router"
 	"wazmeow/pkg/logger"
 
 	"github.com/lib/pq"
@@ -30,12 +31,12 @@ func NewServer() (*Server, error) {
 	}
 
 	// Configurar roteador HTTP usando use cases
-	router := NewRouter(container)
+	httpRouter := router.NewRouter(container)
 
 	// Criar servidor HTTP
 	httpServer := &http.Server{
 		Addr:         container.GetConfig().GetServerAddress(),
-		Handler:      router,
+		Handler:      httpRouter,
 		ReadTimeout:  container.GetConfig().Server.ReadTimeout,
 		WriteTimeout: container.GetConfig().Server.WriteTimeout,
 	}

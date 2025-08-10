@@ -9,6 +9,4 @@ type WebhookResponse struct {
 }
 
 // WebhookDeleteResponse representa a resposta de exclusão de webhook
-type WebhookDeleteResponse struct {
-	Details string `json:"details"`
-}
+type WebhookDeleteResponse = SimpleResponse

@@ -3,9 +3,7 @@ package responses
 import "go.mau.fi/whatsmeow/types"
 
 // PresenceResponse representa a resposta de definição de presença
-type PresenceResponse struct {
-	Details string `json:"details"`
-}
+type PresenceResponse = SimpleResponse
 
 // UserInfo representa informações de um usuário
 type UserInfo struct {

@@ -1,14 +1,10 @@
 package responses
 
 // ChatPresenceResponse representa a resposta de presença no chat
-type ChatPresenceResponse struct {
-	Details string `json:"details"`
-}
+type ChatPresenceResponse = SimpleResponse
 
 // MarkReadResponse representa a resposta de marcar como lida
-type MarkReadResponse struct {
-	Details string `json:"details"`
-}
+type MarkReadResponse = SimpleResponse
 
 // DownloadResponse representa a resposta de download de mídia
 type DownloadResponse struct {
@@ -17,7 +13,4 @@ type DownloadResponse struct {
 }
 
 // HistorySyncResponse representa a resposta de sincronização de histórico
-type HistorySyncResponse struct {
-	Details   string `json:"details"`
-	Timestamp int64  `json:"timestamp"`
-}
+type HistorySyncResponse = TimestampedResponse

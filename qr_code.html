@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code WhatsApp - WazMeow</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #25D366, #128C7E);
+            color: white;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            color: #333;
+        }
+        h1 {
+            color: #25D366;
+            margin-bottom: 20px;
+        }
+        #qrcode {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+        .info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: left;
+        }
+        .info h3 {
+            color: #25D366;
+            margin-top: 0;
+        }
+        .session-id {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 5px;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        .instructions {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 WazMeow - QR Code WhatsApp</h1>
+        <p>Escaneie o QR Code abaixo com seu WhatsApp para conectar a sessão:</p>
+        
+        <div id="qrcode"></div>
+        
+        <div class="info">
+            <h3>📋 Informações da Sessão</h3>
+            <p><strong>Nome:</strong> minha-sessao</p>
+            <p><strong>ID:</strong> <span class="session-id">c5017319-4928-4ee4-8710-6ec857cd2f54</span></p>
+            <p><strong>Status:</strong> ✅ Conectada e Ativa</p>
+            <p><strong>Data/Hora:</strong> <span id="datetime"></span></p>
+        </div>
+        
+        <div class="instructions">
+            <h3>📱 Como usar:</h3>
+            <ol>
+                <li>Abra o WhatsApp no seu celular</li>
+                <li>Vá em <strong>Configurações > Aparelhos conectados</strong></li>
+                <li>Toque em <strong>"Conectar um aparelho"</strong></li>
+                <li>Escaneie o QR Code acima</li>
+                <li>Aguarde a confirmação da conexão</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // QR Code data do WhatsApp
+        const qrData = "2@RvYBjbSev0CBK4kmIWNMi4jvy3gq4Vio07qnysdBkd2zs4dOZmPO4bL6qK0nqMfDMBfsyNS7gX0UwAVEgOeVOKZyTdZnIEjAd1I=,7pFwHXlIjzLvkxVGEL+vfqK0Z8fvMnqNj8lBVgDBVig=,4Fg8zLXFuepjgWFzyhEngWBRqcNUmJimzkCtjoCrr0Y=,VXmf8wtv5pcQXSfYN32jvhuKHxwJCuuxwNJGVfOJ05o=";
+        
+        // Gerar QR Code
+        QRCode.toCanvas(document.getElementById('qrcode'), qrData, {
+            width: 300,
+            height: 300,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            margin: 2,
+            errorCorrectionLevel: 'M'
+        }, function (error) {
+            if (error) {
+                console.error('Erro ao gerar QR Code:', error);
+                document.getElementById('qrcode').innerHTML = '<p style="color: red;">Erro ao gerar QR Code</p>';
+            }
+        });
+        
+        // Mostrar data/hora atual
+        document.getElementById('datetime').textContent = new Date().toLocaleString('pt-BR');
+        
+        // Auto-refresh do QR Code a cada 30 segundos (opcional)
+        setInterval(() => {
+            console.log('QR Code ainda ativo...');
+        }, 30000);
+    </script>
+</body>
+</html>
