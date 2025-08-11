@@ -177,6 +177,35 @@ db-reset-docker: ## Recria o banco via Docker (remove e recria container)
 	@docker-compose up -d postgres
 	@echo "✅ Banco resetado via Docker"
 
+# ===================================
+# NOVOS COMANDOS - BUN NATIVO
+# ===================================
+
+db-auto-create: ## Criar tabelas automaticamente dos models
+	@echo "🏗️ Criando tabelas automaticamente..."
+	@go run cmd/migrate/main.go --env=dev db auto-create
+
+db-auto-validate: ## Validar schema contra models e criar faltantes
+	@echo "🔍 Validando e sincronizando schema..."
+	@go run cmd/migrate/main.go --env=dev db auto-validate
+
+db-auto-status: ## Mostrar status do schema vs models
+	@echo "📊 Verificando status do schema..."
+	@go run cmd/migrate/main.go --env=dev db auto-status
+
+db-recreate: ## Recriar todas as tabelas (DESTRÓI DADOS!)
+	@echo "⚠️ ATENÇÃO: Este comando irá destruir todos os dados!"
+	@read -p "Tem certeza? Digite 'yes' para confirmar: " confirm && [ "$$confirm" = "yes" ]
+	@go run cmd/migrate/main.go --env=dev db recreate --confirm
+	@echo "✅ Tabelas recriadas!"
+
+db-quick-setup: docker-up ## Setup completo rápido (Docker + Tables)
+	@echo "🚀 Setup completo do banco de dados..."
+	@sleep 5
+	@make db-auto-create
+	@make db-auto-status
+	@echo "🎉 Setup completo!"
+
 # Desenvolvimento
 watch: ## Executa com hot reload (requer air)
 	@echo "👀 Iniciando hot reload..."

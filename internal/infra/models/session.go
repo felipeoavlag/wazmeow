@@ -9,32 +9,36 @@ import (
 )
 
 // SessionModel representa o modelo de persistência para sessões usando Bun ORM
-// Este modelo contém as tags específicas do banco de dados e é usado apenas na camada de infraestrutura
+// Este modelo reflete EXATAMENTE a estrutura da entidade de domínio (internal/domain/entity/session.go)
+// Usa convenção camelCase → snake_case automática via Bun ORM
 type SessionModel struct {
 	bun.BaseModel `bun:"table:sessions"`
 
-	// Campos principais da sessão
+	// Campos principais da sessão (seguem exatamente entity.Session)
 	ID     string `bun:"id,pk" json:"id"`
 	Name   string `bun:"name,unique,notnull" json:"name"`
 	Status string `bun:"status,notnull,default:'disconnected'" json:"status"`
 	Phone  string `bun:"phone" json:"phone"`
 
-	// Campos WhatsApp (conexão e autenticação)
-	DeviceJID  string `bun:"device_jid,default:''" json:"device_jid"`
-	QRCode     string `bun:"qrcode,default:''" json:"qrcode"`
-	WebhookURL string `bun:"webhook_url,default:''" json:"webhook_url"`
+	// Campos WhatsApp (conversão automática camelCase → snake_case)
+	// DeviceJID → device_jid no PostgreSQL
+	DeviceJID  string `bun:"deviceJID,default:''" json:"deviceJID"`
+	// WebhookURL → webhook_url no PostgreSQL
+	WebhookURL string `bun:"webhookURL,default:''" json:"webhookURL"`
 	Events     string `bun:"events,default:''" json:"events"`
 
-	// Campos de proxy
-	ProxyType     string `bun:"proxy_type" json:"proxy_type"`
-	ProxyHost     string `bun:"proxy_host" json:"proxy_host"`
-	ProxyPort     int    `bun:"proxy_port" json:"proxy_port"`
-	ProxyUsername string `bun:"proxy_username" json:"proxy_username"`
-	ProxyPassword string `bun:"proxy_password" json:"proxy_password"`
+	// Campos de proxy (desnormalizados para performance - *nullable para opcionais*)
+	// ProxyType → proxy_type no PostgreSQL
+	ProxyType     *string `bun:"proxyType" json:"proxyType,omitempty"`
+	ProxyHost     *string `bun:"proxyHost" json:"proxyHost,omitempty"`
+	ProxyPort     *int    `bun:"proxyPort" json:"proxyPort,omitempty"`
+	ProxyUsername *string `bun:"proxyUsername" json:"proxyUsername,omitempty"`
+	ProxyPassword *string `bun:"proxyPassword" json:"proxyPassword,omitempty"`
 
-	// Campos de auditoria (sempre no final)
-	CreatedAt time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp" json:"created_at"`
-	UpdatedAt time.Time `bun:"updated_at,nullzero,notnull,default:current_timestamp" json:"updated_at"`
+	// Campos de auditoria (conversão automática camelCase → snake_case)
+	// CreatedAt → created_at, UpdatedAt → updated_at
+	CreatedAt time.Time `bun:"createdAt,nullzero,notnull,default:current_timestamp" json:"createdAt"`
+	UpdatedAt time.Time `bun:"updatedAt,nullzero,notnull,default:current_timestamp" json:"updatedAt"`
 }
 
 // TableName define o nome da tabela no banco de dados
@@ -56,14 +60,14 @@ func (m *SessionModel) ToDomain() *entity.Session {
 		UpdatedAt:  m.UpdatedAt,
 	}
 
-	// Converter configuração de proxy se existir
-	if m.ProxyType != "" {
+	// Converter configuração de proxy se existir (verificar se algum campo não é nil)
+	if m.ProxyType != nil && *m.ProxyType != "" {
 		session.ProxyConfig = &entity.ProxyConfig{
-			Type:     m.ProxyType,
-			Host:     m.ProxyHost,
-			Port:     m.ProxyPort,
-			Username: m.ProxyUsername,
-			Password: m.ProxyPassword,
+			Type: *m.ProxyType,
+			Host: safeStringValue(m.ProxyHost),
+			Port: safeIntValue(m.ProxyPort),
+			Username: safeStringValue(m.ProxyUsername),
+			Password: safeStringValue(m.ProxyPassword),
 		}
 	}
 
@@ -82,20 +86,47 @@ func FromDomain(s *entity.Session) *SessionModel {
 		Events:     s.Events,
 		CreatedAt:  s.CreatedAt,
 		UpdatedAt:  s.UpdatedAt,
-		// Campos WhatsApp com valores padrão
-		QRCode: "",
 	}
 
 	// Converter configuração de proxy se existir
 	if s.ProxyConfig != nil {
-		model.ProxyType = s.ProxyConfig.Type
-		model.ProxyHost = s.ProxyConfig.Host
-		model.ProxyPort = s.ProxyConfig.Port
-		model.ProxyUsername = s.ProxyConfig.Username
-		model.ProxyPassword = s.ProxyConfig.Password
+		model.ProxyType = stringPtr(s.ProxyConfig.Type)
+		model.ProxyHost = stringPtr(s.ProxyConfig.Host)
+		model.ProxyPort = intPtr(s.ProxyConfig.Port)
+		model.ProxyUsername = stringPtr(s.ProxyConfig.Username)
+		model.ProxyPassword = stringPtr(s.ProxyConfig.Password)
 	}
 
 	return model
+}
+
+// Funções auxiliares para conversão de ponteiros
+func stringPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func intPtr(i int) *int {
+	if i == 0 {
+		return nil
+	}
+	return &i
+}
+
+func safeStringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func safeIntValue(i *int) int {
+	if i == nil {
+		return 0
+	}
+	return *i
 }
 
 // ToDomainList converte uma lista de modelos para entidades de domínio

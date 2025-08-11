@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"wazmeow/internal/infra/database/migrations"
 	"wazmeow/internal/infra/models"
 	"wazmeow/pkg/logger"
 
@@ -14,7 +13,6 @@ import (
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
 	"github.com/uptrace/bun/extra/bundebug"
-	"github.com/uptrace/bun/migrate"
 )
 
 // BunConnection representa uma conexão com o banco de dados usando Bun ORM
@@ -140,37 +138,7 @@ func (c *BunConnection) RunInTransaction(ctx context.Context, fn func(tx bun.Tx)
 	return nil
 }
 
-// RunMigrations executa as migrações automaticamente na inicialização do sistema
-func RunMigrations(bunConn *BunConnection) error {
-	logger.Info("Executando migrações automaticamente...")
-
-	// Criar migrator
-	migrator := migrate.NewMigrator(
-		bunConn.GetDB(),
-		migrations.Migrations,
-		migrate.WithTableName("bun_migrations"),
-		migrate.WithLocksTableName("bun_migration_locks"),
-	)
-
-	// Inicializar sistema de migrações se necessário
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := migrator.Init(ctx); err != nil {
-		return fmt.Errorf("erro ao inicializar migrator: %w", err)
-	}
-
-	// Executar migrações pendentes
-	group, err := migrator.Migrate(ctx)
-	if err != nil {
-		return fmt.Errorf("erro ao executar migrações: %w", err)
-	}
-
-	if group.ID == 0 {
-		logger.Info("Nenhuma migração pendente encontrada")
-	} else {
-		logger.Info("Migrações aplicadas com sucesso: %s", group)
-	}
-
-	return nil
+// EnsureSchema garante que as tabelas existam baseado nos models
+func (c *BunConnection) EnsureSchema(ctx context.Context) error {
+	return ValidateSchema(ctx, c.DB)
 }

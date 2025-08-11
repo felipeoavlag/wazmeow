@@ -7,10 +7,8 @@ import (
 
 	"wazmeow/internal/config"
 	"wazmeow/internal/infra/database"
-	"wazmeow/internal/infra/database/migrations"
 	"wazmeow/pkg/logger"
 
-	"github.com/uptrace/bun/migrate"
 	"github.com/urfave/cli/v2"
 )
 
@@ -40,9 +38,12 @@ func newDBCommand() *cli.Command {
 		Name:  "db",
 		Usage: "manage database migrations",
 		Subcommands: []*cli.Command{
+			// ===================================
+			// COMANDOS SIMPLIFICADOS - BUNO NATIVO
+			// ===================================
 			{
-				Name:  "init",
-				Usage: "create migration tables",
+				Name:  "auto-create",
+				Usage: "create tables automatically from models using Bun native functions",
 				Action: func(c *cli.Context) error {
 					db, err := connectDB(c.String("env"))
 					if err != nil {
@@ -50,40 +51,18 @@ func newDBCommand() *cli.Command {
 					}
 					defer db.Close()
 
-					migrator := createMigrator(db)
-
-					return migrator.Init(c.Context)
-				},
-			},
-			{
-				Name:  "migrate",
-				Usage: "migrate database",
-				Action: func(c *cli.Context) error {
-					db, err := connectDB(c.String("env"))
+					err = database.CreateTablesFromModels(c.Context, db.GetDB())
 					if err != nil {
-						return err
-					}
-					defer db.Close()
-
-					migrator := createMigrator(db)
-
-					group, err := migrator.Migrate(c.Context)
-					if err != nil {
-						return err
+						return fmt.Errorf("erro ao criar tabelas: %w", err)
 					}
 
-					if group.ID == 0 {
-						fmt.Printf("there are no new migrations to run\n")
-						return nil
-					}
-
-					fmt.Printf("migrated to %s\n", group)
+					fmt.Println("✅ Tabelas criadas automaticamente com sucesso!")
 					return nil
 				},
 			},
 			{
-				Name:  "rollback",
-				Usage: "rollback the last migration group",
+				Name:  "auto-validate",
+				Usage: "validate schema against models and create missing tables",
 				Action: func(c *cli.Context) error {
 					db, err := connectDB(c.String("env"))
 					if err != nil {
@@ -91,25 +70,18 @@ func newDBCommand() *cli.Command {
 					}
 					defer db.Close()
 
-					migrator := createMigrator(db)
-
-					group, err := migrator.Rollback(c.Context)
+					err = database.ValidateSchema(c.Context, db.GetDB())
 					if err != nil {
-						return err
+						return fmt.Errorf("erro na validação: %w", err)
 					}
 
-					if group.ID == 0 {
-						fmt.Printf("there are no groups to roll back\n")
-						return nil
-					}
-
-					fmt.Printf("rolled back %s\n", group)
+					fmt.Println("✅ Schema validado e sincronizado!")
 					return nil
 				},
 			},
 			{
-				Name:  "status",
-				Usage: "print migrations status",
+				Name:  "auto-status",
+				Usage: "show schema status compared to models",
 				Action: func(c *cli.Context) error {
 					db, err := connectDB(c.String("env"))
 					if err != nil {
@@ -117,56 +89,68 @@ func newDBCommand() *cli.Command {
 					}
 					defer db.Close()
 
-					migrator := createMigrator(db)
-
-					// Verificar status das migrações
-					ms, err := migrator.MigrationsWithStatus(c.Context)
+					status, err := database.GetSchemaStatus(c.Context, db.GetDB())
 					if err != nil {
-						return fmt.Errorf("erro ao verificar status das migrações: %w", err)
+						return fmt.Errorf("erro ao obter status: %w", err)
 					}
 
-					fmt.Printf("Migrations status:\n")
-					for _, m := range ms {
-						status := "❌ PENDING"
-						if m.GroupID != 0 {
-							status = "✅ APPLIED"
+					fmt.Println("📊 Schema Status:")
+					fmt.Printf("  📋 Total de tabelas esperadas: %d\n", status.TotalTables)
+					fmt.Printf("  ✅ Tabelas existentes: %d\n", status.ExistingTables)
+					fmt.Printf("  ❌ Tabelas faltando: %d\n", status.MissingTables)
+					fmt.Printf("  🎯 Sincronizado: %t\n", status.IsFullySynced)
+					
+					if len(status.Tables) > 0 {
+						fmt.Println("  📋 Detalhes por tabela:")
+						for table, exists := range status.Tables {
+							symbol := "❌"
+							if exists {
+								symbol = "✅"
+							}
+							fmt.Printf("    %s %s\n", symbol, table)
 						}
-						fmt.Printf("  %s %s\n", status, m.Name)
 					}
 
-					// Verificar se tabela sessions existe
-					var exists bool
-					err = db.GetDB().NewSelect().
-						ColumnExpr("EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'sessions')").
-						Scan(c.Context, &exists)
+					if !status.IsFullySynced {
+						fmt.Println("\n💡 Execute 'db auto-create' para criar tabelas faltando")
+					}
 
+					return nil
+				},
+			},
+			{
+				Name:  "recreate",
+				Usage: "drop and recreate all tables (CAUTION: destroys data!)",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "confirm",
+						Usage: "confirm that you want to destroy all data",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					if !c.Bool("confirm") {
+						fmt.Println("⚠️  Este comando irá DESTRUIR todos os dados!")
+						fmt.Println("Para confirmar, use: --confirm")
+						return nil
+					}
+
+					db, err := connectDB(c.String("env"))
 					if err != nil {
 						return err
 					}
+					defer db.Close()
 
-					fmt.Printf("\nDatabase status:\n")
-					if exists {
-						fmt.Println("  ✅ Tabela sessions existe")
-					} else {
-						fmt.Println("  ❌ Tabela sessions não existe")
+					err = database.RecreateAllTables(c.Context, db.GetDB())
+					if err != nil {
+						return fmt.Errorf("erro ao recriar tabelas: %w", err)
 					}
 
+					fmt.Println("✅ Todas as tabelas foram recriadas!")
 					return nil
 				},
 			},
 		},
 	}
-}
-
-func createMigrator(db *database.BunConnection) *migrate.Migrator {
-	// Usar a coleção de migrações do pacote migrations
-	// Seguindo exatamente a documentação do Bun ORM
-	return migrate.NewMigrator(
-		db.GetDB(),
-		migrations.Migrations,
-		migrate.WithTableName("bun_migrations"),
-		migrate.WithLocksTableName("bun_migration_locks"),
-	)
 }
 
 func connectDB(env string) (*database.BunConnection, error) {

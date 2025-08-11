@@ -1,6 +1,7 @@
 package container
 
 import (
+	"context"
 	"fmt"
 
 	"wazmeow/internal/application/usecase"
@@ -121,9 +122,10 @@ func (b *Builder) setupInfrastructure(container *Container) error {
 	// Registrar modelos no Bun
 	bunConnection.RegisterModels()
 
-	// Executar migrações automaticamente na inicialização
-	if err := database.RunMigrations(bunConnection); err != nil {
-		return fmt.Errorf("erro ao executar migrações: %w", err)
+	// Executar auto-migrations na inicialização usando novo sistema
+	ctx := context.Background()
+	if err := database.ValidateSchema(ctx, bunConnection.GetDB()); err != nil {
+		return fmt.Errorf("erro ao validar schema: %w", err)
 	}
 
 	// Instanciar session manager
