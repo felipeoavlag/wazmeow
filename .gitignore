@@ -1,6 +1,13 @@
 # Ignorar a pasta reference
 reference/
 
+# Binário da aplicação
+wazmeow
+
+# Configurações locais
+.augment/
+Makefile
+
 # Go específicos
 bin/
 vendor/

@@ -195,6 +195,34 @@ A API WazMeow inclui documentação Swagger completa e interativa para todos os 
    http://localhost:8080/swagger/
    ```
 
+### 🔧 Configuração de Host
+
+O WazMeow automaticamente configura o host do Swagger baseado na variável `SERVER_HOST`:
+
+#### 📋 Desenvolvimento Local
+```env
+# .env
+SERVER_HOST=0.0.0.0
+SERVER_PORT=8080
+```
+**Swagger será acessível em**: `http://localhost:8080/swagger/`
+
+#### 🌐 Produção com Domínio
+```env
+# .env
+SERVER_HOST=meudominio.com
+SERVER_PORT=8080
+```
+**Swagger será acessível em**: `https://meudominio.com/swagger/`
+
+#### ⚙️ Host Específico para Swagger (Opcional)
+Se você precisar de um host diferente apenas para o Swagger:
+```env
+# .env
+SERVER_HOST=0.0.0.0
+SWAGGER_HOST=api.meudominio.com
+```
+
 ### 🔧 Gerar Documentação
 
 Para gerar ou atualizar a documentação Swagger:

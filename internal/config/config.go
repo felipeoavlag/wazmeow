@@ -134,7 +134,7 @@ func Load() (*Config, error) {
 		},
 		App: AppConfig{
 			Debug:       parseBool("DEBUG", false),
-			Environment: getEnv("ENVIRONMENT", "production"),
+			Environment: getEnv("ENVIRONMENT", "development"),
 		},
 		Webhook: WebhookConfig{
 			Timeout:    parseDuration("WEBHOOK_TIMEOUT", "30s"),
@@ -187,6 +187,26 @@ func (c *Config) GetServerURL() string {
 	protocol := "http"
 
 	return fmt.Sprintf("%s://%s:%s", protocol, host, c.Server.Port)
+}
+
+// GetSwaggerHost retorna o host para documentação Swagger
+// Se SWAGGER_HOST estiver definido, usa ele, senão usa SERVER_HOST
+// Se SERVER_HOST for 0.0.0.0, usa localhost para Swagger
+func (c *Config) GetSwaggerHost() string {
+	// Primeiro verifica se há um SWAGGER_HOST específico configurado
+	if swaggerHost := getEnv("SWAGGER_HOST", ""); swaggerHost != "" {
+		return swaggerHost
+	}
+
+	// Senão, usa o SERVER_HOST
+	host := c.Server.Host
+
+	// Se for 0.0.0.0, usar localhost para Swagger (mais apropriado para documentação)
+	if host == "0.0.0.0" {
+		return fmt.Sprintf("localhost:%s", c.Server.Port)
+	}
+
+	return fmt.Sprintf("%s:%s", host, c.Server.Port)
 }
 
 // IsProduction verifica se está em ambiente de produção

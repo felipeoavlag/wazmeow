@@ -1,0 +1,108 @@
+version: "3.7"
+
+services:
+  wazmeow_postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=PQ8wQWlBMYvBezs5
+      - POSTGRES_DB=wazmeow
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+      - TZ=America/Sao_Paulo
+    volumes:
+      - wazmeow_postgres_data:/var/lib/postgresql/data
+    networks:
+      infraNet:
+        aliases:
+          - postgres
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1024M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d wazmeow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  wazmeow_redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "PQ8wQWlBMYvBezs5"]
+    volumes:
+      - wazmeow_redis_data:/data
+    networks:
+      infraNet:
+        aliases:
+          - redis
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  wazmeow_app:
+    image: felipyfgs17/wazmeow:latest
+    environment:
+      - SERVER_HOST=wazmeow.resolvecert.com
+      - SERVER_PORT=8080
+      - LOG_LEVEL=INFO
+      - TZ=America/Sao_Paulo
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=PQ8wQWlBMYvBezs5
+      - DB_NAME=wazmeow
+      - DB_SSLMODE=disable
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=PQ8wQWlBMYvBezs5
+      - WEBHOOK_TIMEOUT=30s
+      - SESSION_TIMEOUT=24h
+    volumes:
+      - wazmeow_sessions:/app/sessions
+    networks:
+      - infraNet
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+      restart_policy:
+        condition: on-failure
+        delay: 15s
+        max_attempts: 10
+      update_config:
+        delay: 30s
+        order: start-first
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.wazmeow_app.rule=Host(`wazmeow.resolvecert.com`)
+        - traefik.http.routers.wazmeow_app.entrypoints=websecure
+        - traefik.http.routers.wazmeow_app.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.wazmeow_app.service=wazmeow_app
+        - traefik.http.services.wazmeow_app.loadbalancer.server.port=8080
+
+volumes:
+  wazmeow_postgres_data:
+    external: true
+  wazmeow_redis_data:
+    external: true
+  wazmeow_sessions:
+    external: true
+
+networks:
+  infraNet:
+    external: true
+    name: infraNet
