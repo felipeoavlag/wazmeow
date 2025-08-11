@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -59,7 +58,7 @@ func main() {
 	// Criar servidor
 	server, err := http.NewServer()
 	if err != nil {
-		fmt.Printf("❌ Erro ao criar servidor: %v\n", err)
+		logger.Error("❌ Erro ao criar servidor: %v", err)
 		return
 	}
 

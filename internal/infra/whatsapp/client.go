@@ -509,10 +509,10 @@ func (wac *WhatsAppClient) handleQR(evt *events.QR) {
 		// Exibir QR code no terminal (útil para desenvolvimento/teste)
 		logger.Info("=== QR CODE PARA SESSÃO %s ===", wac.sessionID)
 		qrterminal.GenerateHalfBlock(qrCode, qrterminal.L, os.Stdout)
-		fmt.Printf("\n📱 Escaneie o QR code acima com o WhatsApp\n")
-		fmt.Printf("🔗 Código QR: %s\n", qrCode)
-		fmt.Printf("⏰ Sessão: %s\n", wac.sessionID)
-		fmt.Printf("=======================================\n\n")
+		logger.Info("📱 Escaneie o QR code acima com o WhatsApp")
+		logger.Info("🔗 Código QR: %s", qrCode)
+		logger.Info("⏰ Sessão: %s", wac.sessionID)
+		logger.Info("=======================================")
 
 		// Atualizar sessão com QR code
 		session, err := wac.sessionRepo.GetByID(wac.sessionID)
@@ -567,10 +567,10 @@ func (wac *WhatsAppClient) handlePairSuccess(evt *events.PairSuccess) {
 		logger.Info("Sessão %s atualizada com JID: %s (Phone: %s) - Status: connected", wac.sessionID, evt.ID.String(), evt.ID.User)
 	}
 
-	fmt.Printf("\n✅ WhatsApp conectado com sucesso!\n")
-	fmt.Printf("📱 Sessão: %s\n", wac.sessionID)
-	fmt.Printf("🆔 JID: %s\n", evt.ID.String())
-	fmt.Printf("=======================================\n\n")
+	logger.Info("✅ WhatsApp conectado com sucesso!")
+	logger.Info("📱 Sessão: %s", wac.sessionID)
+	logger.Info("🆔 JID: %s", evt.ID.String())
+	logger.Info("=======================================")
 }
 
 // handleMessage trata eventos de mensagem
@@ -785,11 +785,11 @@ func (wac *WhatsAppClient) handleQRCode(code string) {
 
 	// Exibir QR code no terminal
 	qrterminal.GenerateHalfBlock(code, qrterminal.L, os.Stdout)
-	fmt.Printf("\n📱 Escaneie o QR code acima com o WhatsApp\n")
-	fmt.Printf("🔗 Código QR: %s\n", code)
-	fmt.Printf("⏰ Sessão: %s\n", wac.sessionID)
-	fmt.Printf("⏱️  Expira em: ~20 segundos\n")
-	fmt.Printf("=======================================\n\n")
+	logger.Info("📱 Escaneie o QR code acima com o WhatsApp")
+	logger.Info("🔗 Código QR: %s", code)
+	logger.Info("⏰ Sessão: %s", wac.sessionID)
+	logger.Info("⏱️  Expira em: ~20 segundos")
+	logger.Info("=======================================")
 
 	// Salvar QR code no banco
 	wac.saveQRCodeToDB(code)
@@ -815,10 +815,10 @@ func (wac *WhatsAppClient) handleQRTimeout() {
 	// Enviar webhook
 	wac.sendQRWebhook("", "timeout")
 
-	fmt.Printf("\n⏰ QR code expirou - aguardando novo...\n")
-	fmt.Printf("📱 Sessão: %s\n", wac.sessionID)
-	fmt.Printf("🔄 Novo QR code será gerado automaticamente\n")
-	fmt.Printf("=======================================\n\n")
+	logger.Info("⏰ QR code expirou - aguardando novo...")
+	logger.Info("📱 Sessão: %s", wac.sessionID)
+	logger.Info("🔄 Novo QR code será gerado automaticamente")
+	logger.Info("=======================================")
 
 	// NÃO terminar o loop - aguardar novo QR code
 	// O whatsmeow automaticamente gerará um novo QR code
@@ -837,10 +837,10 @@ func (wac *WhatsAppClient) handleQRSuccess() {
 	// Enviar webhook
 	wac.sendQRWebhook("", "success")
 
-	fmt.Printf("\n✅ QR code escaneado com sucesso!\n")
-	fmt.Printf("📱 Sessão: %s\n", wac.sessionID)
-	fmt.Printf("🎉 WhatsApp conectado!\n")
-	fmt.Printf("=======================================\n\n")
+	logger.Info("✅ QR code escaneado com sucesso!")
+	logger.Info("📱 Sessão: %s", wac.sessionID)
+	logger.Info("🎉 WhatsApp conectado!")
+	logger.Info("=======================================")
 }
 
 // handleQRError trata evento de erro na autenticação
@@ -856,10 +856,10 @@ func (wac *WhatsAppClient) handleQRError(err error) {
 	// Enviar webhook
 	wac.sendQRWebhook("", "error")
 
-	fmt.Printf("\n❌ Erro no processo QR!\n")
-	fmt.Printf("📱 Sessão: %s\n", wac.sessionID)
-	fmt.Printf("🚨 Erro: %v\n", err)
-	fmt.Printf("=======================================\n\n")
+	logger.Error("❌ Erro no processo QR!")
+	logger.Error("📱 Sessão: %s", wac.sessionID)
+	logger.Error("🚨 Erro: %v", err)
+	logger.Error("=======================================")
 }
 
 // saveQRCodeToDB salva o QR code no banco de dados

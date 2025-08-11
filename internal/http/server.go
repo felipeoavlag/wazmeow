@@ -112,14 +112,14 @@ func (s *Server) Shutdown(ctx context.Context) error {
 func (s *Server) printStartupInfo() {
 	cfg := s.container.GetConfig()
 
-	fmt.Printf("🚀 WazMeow API Server\n")
-	fmt.Printf("=====================\n")
-	fmt.Printf("🌐 Servidor: http://%s\n", cfg.GetServerAddress())
-	fmt.Printf("🗄️  Banco: %s:%s/%s\n", cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
-	fmt.Printf("📋 Ambiente: %s\n", cfg.App.Environment)
-	fmt.Printf("📊 Log Level: %s\n", cfg.Log.Level)
-	fmt.Printf("📋 Health Check: http://%s/health\n", cfg.GetServerAddress())
-	fmt.Printf("=====================\n")
+	logger.Info("🚀 WazMeow API Server")
+	logger.Info("=====================")
+	logger.Info("🌐 Servidor: http://%s", cfg.GetServerAddress())
+	logger.Info("🗄️  Banco: %s:%s/%s", cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
+	logger.Info("📋 Ambiente: %s", cfg.App.Environment)
+	logger.Info("📊 Log Level: %s", cfg.Log.Level)
+	logger.Info("📋 Health Check: http://%s/health", cfg.GetServerAddress())
+	logger.Info("=====================")
 }
 
 // GetContainer retorna o container de dependências (útil para testes)
