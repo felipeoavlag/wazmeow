@@ -32,6 +32,8 @@ type Session struct {
 
 	// URL do webhook para receber eventos (opcional)
 	WebhookURL string `json:"webhookURL,omitempty" example:"https://example.com/webhook"`
+	// Webhook padrão automático para UI (sempre presente)
+	Webhook string `json:"webhook,omitempty" example:"http://localhost:8090/webhook/550e8400-e29b-41d4-a716-446655440000"`
 	// Eventos subscritos separados por vírgula (opcional)
 	Events string `json:"events,omitempty" example:"message,status"`
 

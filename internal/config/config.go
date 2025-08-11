@@ -148,8 +148,8 @@ func Load() (*Config, error) {
 				HalfOpenMaxCalls: parseInt("WEBHOOK_CB_HALF_OPEN_MAX_CALLS", 3),
 			},
 			RateLimit: RateLimitConfig{
-				RequestsPerSecond: parseInt("WEBHOOK_RATE_LIMIT_RPS", 10),
-				BurstSize:         parseInt("WEBHOOK_RATE_LIMIT_BURST", 20),
+				RequestsPerSecond: parseInt("WEBHOOK_RATE_LIMIT_RPS", 50),    // Aumentado de 10 para 50
+				BurstSize:         parseInt("WEBHOOK_RATE_LIMIT_BURST", 100), // Aumentado de 20 para 100
 				CleanupInterval:   parseDuration("WEBHOOK_RATE_LIMIT_CLEANUP", "5m"),
 			},
 		},
@@ -173,6 +173,20 @@ func (c *Config) GetDatabaseURL() string {
 // GetServerAddress retorna o endereço completo do servidor
 func (c *Config) GetServerAddress() string {
 	return fmt.Sprintf("%s:%s", c.Server.Host, c.Server.Port)
+}
+
+// GetServerURL retorna a URL base do servidor para webhooks
+func (c *Config) GetServerURL() string {
+	// Se o host for 0.0.0.0, usar 127.0.0.1 para URLs de webhook
+	host := c.Server.Host
+	if host == "0.0.0.0" {
+		host = "127.0.0.1"
+	}
+
+	// Usar sempre HTTP para webhooks locais na porta 8080
+	protocol := "http"
+
+	return fmt.Sprintf("%s://%s:%s", protocol, host, c.Server.Port)
 }
 
 // IsProduction verifica se está em ambiente de produção

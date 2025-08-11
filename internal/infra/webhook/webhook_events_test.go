@@ -14,9 +14,9 @@ func TestEventSerializer_SerializeContactEvent(t *testing.T) {
 
 	// Criar um evento Contact de teste
 	contactEvent := &events.Contact{
-		JID:       types.NewJID("5511999999999", types.DefaultUserServer),
-		Timestamp: time.Now(),
-		Action:    nil, // Pode ser nil para teste básico
+		JID:          types.NewJID("5511999999999", types.DefaultUserServer),
+		Timestamp:    time.Now(),
+		Action:       nil, // Pode ser nil para teste básico
 		FromFullSync: false,
 	}
 

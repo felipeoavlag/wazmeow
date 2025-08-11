@@ -12,6 +12,7 @@ import (
 
 	"wazmeow/internal/application/dto/requests"
 	"wazmeow/internal/application/dto/responses"
+	"wazmeow/internal/config"
 	"wazmeow/internal/domain/entity"
 	"wazmeow/internal/domain/repository"
 	"wazmeow/internal/domain/service"
@@ -34,13 +35,15 @@ import (
 type CreateSessionUseCase struct {
 	sessionRepo   repository.SessionRepository
 	domainService *service.SessionDomainService
+	config        *config.Config
 }
 
 // NewCreateSessionUseCase cria uma nova instância do use case
-func NewCreateSessionUseCase(sessionRepo repository.SessionRepository, domainService *service.SessionDomainService) *CreateSessionUseCase {
+func NewCreateSessionUseCase(sessionRepo repository.SessionRepository, domainService *service.SessionDomainService, config *config.Config) *CreateSessionUseCase {
 	return &CreateSessionUseCase{
 		sessionRepo:   sessionRepo,
 		domainService: domainService,
+		config:        config,
 	}
 }
 
@@ -62,11 +65,13 @@ func (uc *CreateSessionUseCase) Execute(req *requests.CreateSessionRequest) (*en
 	}
 
 	// Criar nova sessão
+	sessionID := uuid.New().String()
 	session := &entity.Session{
-		ID:         uuid.New().String(),
+		ID:         sessionID,
 		Name:       req.Name,
 		Status:     entity.StatusDisconnected,
-		WebhookURL: req.WebhookURL, // Configurar webhook URL se fornecida
+		WebhookURL: req.WebhookURL,                                                    // Configurar webhook URL se fornecida
+		Webhook:    fmt.Sprintf("%s/webhook/%s", uc.config.GetServerURL(), sessionID), // Webhook padrão automático
 		CreatedAt:  time.Now(),
 		UpdatedAt:  time.Now(),
 	}

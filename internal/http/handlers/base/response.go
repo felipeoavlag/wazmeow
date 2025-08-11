@@ -40,7 +40,7 @@ func (rb *ResponseBuilder) Success(data interface{}, message string) {
 // Error envia uma resposta de erro
 func (rb *ResponseBuilder) Error(err error, statusCode int) {
 	var errorMessage string
-	
+
 	if handlerErr, ok := err.(*HandlerError); ok {
 		errorMessage = handlerErr.Message
 		statusCode = handlerErr.Code

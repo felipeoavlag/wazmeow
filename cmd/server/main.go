@@ -11,6 +11,8 @@ import (
 	"wazmeow/internal/http"
 	"wazmeow/pkg/logger"
 
+	_ "wazmeow/docs" // Import para registrar documentação Swagger
+
 	"github.com/lib/pq"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 )

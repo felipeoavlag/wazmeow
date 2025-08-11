@@ -22,10 +22,12 @@ type SessionModel struct {
 
 	// Campos WhatsApp (conversão automática camelCase → snake_case)
 	// DeviceJID → device_jid no PostgreSQL
-	DeviceJID  string `bun:"deviceJID,default:''" json:"deviceJID"`
+	DeviceJID string `bun:"deviceJID,default:''" json:"deviceJID"`
 	// WebhookURL → webhook_url no PostgreSQL
 	WebhookURL string `bun:"webhookURL,default:''" json:"webhookURL"`
-	Events     string `bun:"events,default:''" json:"events"`
+	// Webhook → webhook no PostgreSQL (webhook padrão automático)
+	Webhook string `bun:"webhook,default:''" json:"webhook"`
+	Events  string `bun:"events,default:''" json:"events"`
 
 	// Campos de proxy (desnormalizados para performance - *nullable para opcionais*)
 	// ProxyType → proxy_type no PostgreSQL
@@ -55,6 +57,7 @@ func (m *SessionModel) ToDomain() *entity.Session {
 		Phone:      m.Phone,
 		DeviceJID:  m.DeviceJID,
 		WebhookURL: m.WebhookURL,
+		Webhook:    m.Webhook,
 		Events:     m.Events,
 		CreatedAt:  m.CreatedAt,
 		UpdatedAt:  m.UpdatedAt,
@@ -63,9 +66,9 @@ func (m *SessionModel) ToDomain() *entity.Session {
 	// Converter configuração de proxy se existir (verificar se algum campo não é nil)
 	if m.ProxyType != nil && *m.ProxyType != "" {
 		session.ProxyConfig = &entity.ProxyConfig{
-			Type: *m.ProxyType,
-			Host: safeStringValue(m.ProxyHost),
-			Port: safeIntValue(m.ProxyPort),
+			Type:     *m.ProxyType,
+			Host:     safeStringValue(m.ProxyHost),
+			Port:     safeIntValue(m.ProxyPort),
 			Username: safeStringValue(m.ProxyUsername),
 			Password: safeStringValue(m.ProxyPassword),
 		}
@@ -83,6 +86,7 @@ func FromDomain(s *entity.Session) *SessionModel {
 		Phone:      s.Phone,
 		DeviceJID:  s.DeviceJID,
 		WebhookURL: s.WebhookURL,
+		Webhook:    s.Webhook,
 		Events:     s.Events,
 		CreatedAt:  s.CreatedAt,
 		UpdatedAt:  s.UpdatedAt,

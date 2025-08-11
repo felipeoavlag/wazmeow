@@ -323,14 +323,18 @@ func (h *Handler) DeleteMessage(w http.ResponseWriter, r *http.Request) {
 	}, "Mensagem deletada com sucesso")
 }
 
-// ReactMessage reage a uma mensagem
-// @Summary Reage a uma mensagem
-// @Description Adiciona ou remove uma reação (emoji) a uma mensagem via WhatsApp
+// SendAudioMessage envia uma mensagem de áudio
+// @Summary Envia mensagem de áudio
+// @Description Envia uma mensagem de áudio via WhatsApp para um número específico
 // @Tags messages
 // @Accept json
 // @Produce json
-// @Param
-// SendAudioMessage envia uma mensagem de áudio
+// @Param sessionID path string true "ID ou nome da sessão"
+// @Param request body requests.SendAudioMessageRequest true "Dados do áudio"
+// @Success 200 {object} base.APIResponse "Áudio enviado com sucesso"
+// @Failure 400 {object} base.APIResponse "Dados inválidos"
+// @Failure 500 {object} base.APIResponse "Erro interno do servidor"
+// @Router /message/{sessionID}/send/audio [post]
 func (h *Handler) SendAudioMessage(w http.ResponseWriter, r *http.Request) {
 	sessionID, ok := middleware.RequireSessionID(w, r)
 	if !ok {

@@ -13,6 +13,7 @@ vendor/
 *.cover
 coverage.txt
 coverage.html
+coverage.out
 go.work
 go.work.sum
 
@@ -59,9 +60,10 @@ logs/
 *.sqlite
 *.sqlite3
 
-# Documentação gerada
-docs/
-swagger/
+# Documentação gerada (manter apenas arquivos manuais)
+docs/docs.go
+docs/swagger.json
+docs/swagger.yaml
 
 # Deploy e CI/CD
 .terraform/

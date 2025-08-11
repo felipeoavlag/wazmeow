@@ -64,7 +64,7 @@ func NewRouter(container *container.Container) http.Handler {
 
 	// Swagger UI
 	r.Get("/swagger/*", httpSwagger.Handler(
-		httpSwagger.URL("http://localhost:8080/swagger/doc.json"),
+		httpSwagger.URL("/swagger/doc.json"),
 	))
 
 	// Criar handlers refatorados
@@ -156,8 +156,9 @@ func NewRouter(container *container.Container) http.Handler {
 
 			// Rotas de webhook dentro de sessions
 			r.Route("/webhook", func(r chi.Router) {
+				r.Get("/", webhookHandler.FindWebhook) // GET /sessions/{sessionID}/webhook
 				r.Post("/set", webhookHandler.SetWebhook)
-				r.Get("/find", webhookHandler.FindWebhook)
+				r.Get("/find", webhookHandler.FindWebhook) // Manter compatibilidade
 			})
 		})
 	})
@@ -200,8 +201,10 @@ func NewRouter(container *container.Container) http.Handler {
 
 		r.Route("/{sessionID}", func(r chi.Router) {
 			r.Use(middleware.SessionValidator)
+			r.Get("/", webhookHandler.FindWebhook)          // GET /webhook/{sessionID}
+			r.Post("/", webhookHandler.ReceiveWebhookEvent) // POST /webhook/{sessionID} - Receber eventos do webhook
 			r.Post("/set", webhookHandler.SetWebhook)
-			r.Get("/find", webhookHandler.FindWebhook)
+			r.Get("/find", webhookHandler.FindWebhook) // Manter compatibilidade
 		})
 	})
 

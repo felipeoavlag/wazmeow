@@ -92,12 +92,12 @@ func (h *BaseHandler) ValidateRequestWithPhone(w http.ResponseWriter, fields map
 	if !h.ValidateRequiredOrError(w, fields) {
 		return false
 	}
-	
+
 	// Validar telefone
 	if !h.ValidatePhoneOrError(w, phone) {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -197,7 +197,7 @@ func BaseHandlerMiddleware(next http.Handler) http.Handler {
 		// Adiciona o BaseHandler ao contexto da requisição se necessário
 		// Por enquanto, apenas chama o próximo handler
 		next.ServeHTTP(w, r)
-		
+
 		// Aqui podemos adicionar logging automático ou outras funcionalidades
 		baseHandler.LogRequest(r, "Request processed")
 	})

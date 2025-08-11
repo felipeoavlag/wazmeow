@@ -119,13 +119,10 @@ func (b *Builder) setupInfrastructure(container *Container) error {
 		return fmt.Errorf("erro ao conectar com Bun: %w", err)
 	}
 
-	// Registrar modelos no Bun
-	bunConnection.RegisterModels()
-
-	// Executar auto-migrations na inicialização usando novo sistema
+	// Garantir que o schema esteja atualizado
 	ctx := context.Background()
-	if err := database.ValidateSchema(ctx, bunConnection.GetDB()); err != nil {
-		return fmt.Errorf("erro ao validar schema: %w", err)
+	if err := bunConnection.EnsureSchema(ctx); err != nil {
+		return fmt.Errorf("erro ao garantir schema atualizado: %w", err)
 	}
 
 	// Instanciar session manager
@@ -165,7 +162,7 @@ func (b *Builder) setupUseCases(container *Container) error {
 	// Instanciar use cases organizados por categoria
 	sessionUseCases := &SessionUseCases{
 		// Gerenciamento básico
-		Create:  usecase.NewCreateSessionUseCase(container.sessionRepo, container.sessionDomainService),
+		Create:  usecase.NewCreateSessionUseCase(container.sessionRepo, container.sessionDomainService, container.config),
 		List:    usecase.NewListSessionsUseCase(container.sessionRepo),
 		Delete:  usecase.NewDeleteSessionUseCase(container.sessionRepo, container.sessionDomainService),
 		GetInfo: usecase.NewGetSessionInfoUseCase(container.sessionRepo),

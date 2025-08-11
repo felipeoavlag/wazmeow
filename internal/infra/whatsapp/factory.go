@@ -385,8 +385,30 @@ func (cf *ClientFactory) shouldBypassProxy(host string) bool {
 }
 
 // configureClientForMediaOptimization configura o cliente para otimizar downloads de mídia
-func (cf *ClientFactory) configureClientForMediaOptimization(_ *whatsmeow.Client) {
-	// O whatsmeow usa o http.DefaultTransport que já foi configurado com bypass
-	// Apenas log informativo de que a configuração foi aplicada
-	logger.Debug("Cliente WhatsApp configurado com proxy bypass para CDNs de mídia")
+func (cf *ClientFactory) configureClientForMediaOptimization(client *whatsmeow.Client) {
+	// Configurar timeouts mais tolerantes para downloads de mídia
+	if http.DefaultTransport == nil {
+		http.DefaultTransport = &http.Transport{}
+	}
+
+	// Configurar transport personalizado com timeouts mais robustos para mídia
+	transport := &http.Transport{
+		MaxIdleConns:           100,
+		MaxIdleConnsPerHost:    20,                // Aumentado para CDNs
+		IdleConnTimeout:        120 * time.Second, // Mais tempo para CDNs
+		TLSHandshakeTimeout:    15 * time.Second,  // Mais tempo para handshake
+		ResponseHeaderTimeout:  30 * time.Second,  // Mais tempo para headers
+		DisableKeepAlives:      false,             // Manter conexões ativas
+		DisableCompression:     false,             // Permitir compressão
+		MaxResponseHeaderBytes: 1 << 20,           // 1MB para headers
+	}
+
+	// Aplicar transport melhorado
+	http.DefaultTransport = transport
+
+	// Configurações específicas do cliente WhatsApp
+	client.EnableAutoReconnect = true
+	client.AutoTrustIdentity = false // Reduzir warnings de identidade
+
+	logger.Debug("Cliente WhatsApp configurado com timeouts robustos para mídia")
 }

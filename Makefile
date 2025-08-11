@@ -1,217 +1,166 @@
-# WazMeow API - Makefile
-# =====================
+# Makefile para WazMeow
+# Comandos básicos para desenvolvimento e deploy
 
 # Variáveis
-BINARY_NAME=wazmeow
-SETUP_BINARY=setup
-BUILD_DIR=bin
-SERVER_CMD=cmd/server/main.go
-SETUP_CMD=cmd/setup/main.go
+APP_NAME = wazmeow
+BINARY_NAME = wazmeow
+MAIN_PATH = ./cmd/server
+BUILD_DIR = ./bin
+DOCKER_COMPOSE_FILE = docker-compose.yml
 
-# Comandos padrão
-.PHONY: help build setup run clean test deps dev swagger-gen swagger-serve swagger-clean
+# Cores para output
+GREEN = \033[0;32m
+YELLOW = \033[0;33m
+RED = \033[0;31m
+NC = \033[0m # No Color
 
-# Ajuda
-help: ## Mostra esta mensagem de ajuda
-	@echo "WazMeow API - Comandos disponíveis:"
-	@echo "=================================="
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+.PHONY: help build run clean test deps docker-up docker-down docker-logs docker-restart dev install lint fmt vet check swagger-gen swagger-serve swagger-clean
 
-# Build
-build: ## Compila o servidor principal
-	@echo "🔨 Compilando servidor..."
+# Comando padrão
+help: ## Mostra esta ajuda
+	@echo "$(GREEN)WazMeow - Comandos disponíveis:$(NC)"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-15s$(NC) %s\n", $$1, $$2}'
+	@echo ""
+
+# Comandos de Build
+build: ## Compila a aplicação
+	@echo "$(GREEN)🔨 Compilando $(APP_NAME)...$(NC)"
 	@mkdir -p $(BUILD_DIR)
-	@go build -o $(BUILD_DIR)/$(BINARY_NAME) $(SERVER_CMD)
-	@echo "✅ Servidor compilado: $(BUILD_DIR)/$(BINARY_NAME)"
+	@go build -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+	@echo "$(GREEN)✅ Build concluído: $(BUILD_DIR)/$(BINARY_NAME)$(NC)"
 
-build-setup: ## Compila o aplicativo de configuração
-	@echo "🔨 Compilando configurador..."
+build-linux: ## Compila para Linux (útil para Docker)
+	@echo "$(GREEN)🔨 Compilando $(APP_NAME) para Linux...$(NC)"
 	@mkdir -p $(BUILD_DIR)
-	@go build -o $(BUILD_DIR)/$(SETUP_BINARY) $(SETUP_CMD)
-	@echo "✅ Configurador compilado: $(BUILD_DIR)/$(SETUP_BINARY)"
+	@GOOS=linux GOARCH=amd64 go build -o $(BUILD_DIR)/$(BINARY_NAME)-linux $(MAIN_PATH)
+	@echo "$(GREEN)✅ Build Linux concluído: $(BUILD_DIR)/$(BINARY_NAME)-linux$(NC)"
 
-build-all: build build-setup ## Compila todos os binários
+# Comandos de Execução
+run: build ## Compila e executa a aplicação
+	@echo "$(GREEN)🚀 Executando $(APP_NAME)...$(NC)"
+	@$(BUILD_DIR)/$(BINARY_NAME)
 
-# Configuração
-setup: build-setup ## Executa o configurador interativo
-	@echo "⚙️  Iniciando configurador..."
-	@./$(BUILD_DIR)/$(SETUP_BINARY)
+dev: ## Executa em modo desenvolvimento (com go run)
+	@echo "$(GREEN)🔥 Executando em modo desenvolvimento...$(NC)"
+	@go run $(MAIN_PATH)
 
-# Execução
-run: build ## Compila e executa o servidor
-	@echo "🚀 Iniciando servidor..."
-	@./$(BUILD_DIR)/$(BINARY_NAME)
+# Comandos de Teste e Qualidade
+test: ## Executa todos os testes
+	@echo "$(GREEN)🧪 Executando testes...$(NC)"
+	@go test ./... -v
 
-dev: ## Executa em modo desenvolvimento
-	@echo "🔧 Iniciando em modo desenvolvimento..."
-	@go run $(SERVER_CMD)
-
-# Dependências
-deps: ## Instala/atualiza dependências
-	@echo "📦 Instalando dependências..."
-	@go mod tidy
-	@go mod download
-	@echo "✅ Dependências atualizadas"
-
-# Testes
-test: ## Executa os testes
-	@echo "🧪 Executando testes..."
-	@go test -v ./...
-
-test-coverage: ## Executa testes com cobertura
-	@echo "🧪 Executando testes com cobertura..."
-	@go test -v -coverprofile=coverage.out ./...
+test-coverage: ## Executa testes com coverage
+	@echo "$(GREEN)🧪 Executando testes com coverage...$(NC)"
+	@go test ./... -coverprofile=coverage.out
 	@go tool cover -html=coverage.out -o coverage.html
-	@echo "📊 Relatório de cobertura: coverage.html"
+	@echo "$(GREEN)📊 Coverage report: coverage.html$(NC)"
 
-# Limpeza
-clean: ## Remove arquivos compilados
-	@echo "🧹 Limpando arquivos..."
-	@rm -rf $(BUILD_DIR)
-	@rm -f coverage.out coverage.html
-	@echo "✅ Limpeza concluída"
-
-# Docker
-docker-build: ## Constrói imagem Docker
-	@echo "🐳 Construindo imagem Docker..."
-	@docker build -t wazmeow:latest .
-
-docker-run: ## Executa container Docker
-	@echo "🐳 Executando container..."
-	@docker run -p 8080:8080 --env-file .env wazmeow:latest
-
-docker-up: ## Inicia serviços de desenvolvimento (PostgreSQL, Redis, DBGate)
-	@echo "🐳 Iniciando serviços de desenvolvimento..."
-	@docker-compose up -d postgres redis dbgate
-
-docker-down: ## Para todos os serviços
-	@echo "🐳 Parando serviços..."
-	@docker-compose down
-
-docker-logs: ## Mostra logs dos serviços
-	@echo "📋 Logs dos serviços..."
-	@docker-compose logs -f
-
-docker-clean: ## Remove containers, volumes e imagens
-	@echo "🧹 Limpando Docker..."
-	@docker-compose down -v --rmi all
-	@docker system prune -f
-
-docker-restart: docker-down docker-up ## Reinicia os serviços
-
-docker-status: ## Mostra status dos containers
-	@echo "📊 Status dos containers..."
-	@docker-compose ps
-
-
-
-# Utilitários
-fmt: ## Formata o código
-	@echo "🎨 Formatando código..."
-	@go fmt ./...
-	@echo "✅ Código formatado"
-
-lint: ## Executa linter
-	@echo "🔍 Executando linter..."
+lint: ## Executa linter (golangci-lint)
+	@echo "$(GREEN)🔍 Executando linter...$(NC)"
 	@golangci-lint run
-	@echo "✅ Linting concluído"
 
-mod-update: ## Atualiza módulos Go
-	@echo "📦 Atualizando módulos..."
+fmt: ## Formata o código
+	@echo "$(GREEN)✨ Formatando código...$(NC)"
+	@go fmt ./...
+
+vet: ## Executa go vet
+	@echo "$(GREEN)🔍 Executando go vet...$(NC)"
+	@go vet ./...
+
+check: fmt vet test ## Executa formatação, vet e testes
+
+# Comandos de Dependências
+deps: ## Baixa e organiza dependências
+	@echo "$(GREEN)📦 Baixando dependências...$(NC)"
+	@go mod download
+	@go mod tidy
+
+deps-update: ## Atualiza todas as dependências
+	@echo "$(GREEN)📦 Atualizando dependências...$(NC)"
 	@go get -u ./...
 	@go mod tidy
-	@echo "✅ Módulos atualizados"
 
-# Swagger/Documentação
+# Comandos Docker Compose
+docker-up: ## Inicia todos os serviços (PostgreSQL, Redis, DBGate, Webhook Tester)
+	@echo "$(GREEN)🐳 Iniciando serviços Docker...$(NC)"
+	@docker-compose -f $(DOCKER_COMPOSE_FILE) up -d
+	@echo "$(GREEN)✅ Serviços iniciados:$(NC)"
+	@echo "  📊 DBGate (Admin DB): http://localhost:3000"
+	@echo "  🔗 Webhook Tester: http://localhost:8090"
+	@echo "  🐘 PostgreSQL: localhost:5432"
+	@echo "  🔴 Redis: localhost:6379"
+
+docker-down: ## Para todos os serviços
+	@echo "$(YELLOW)🐳 Parando serviços Docker...$(NC)"
+	@docker-compose -f $(DOCKER_COMPOSE_FILE) down
+
+docker-restart: ## Reinicia todos os serviços
+	@echo "$(YELLOW)🐳 Reiniciando serviços Docker...$(NC)"
+	@docker-compose -f $(DOCKER_COMPOSE_FILE) restart
+
+docker-logs: ## Mostra logs dos serviços
+	@echo "$(GREEN)📋 Logs dos serviços Docker:$(NC)"
+	@docker-compose -f $(DOCKER_COMPOSE_FILE) logs -f
+
+docker-clean: ## Remove containers, volumes e imagens
+	@echo "$(RED)🧹 Limpando Docker (containers, volumes, imagens)...$(NC)"
+	@docker-compose -f $(DOCKER_COMPOSE_FILE) down -v --rmi all
+
+# Comandos de Limpeza
+clean: ## Remove arquivos de build
+	@echo "$(YELLOW)🧹 Limpando arquivos de build...$(NC)"
+	@rm -rf $(BUILD_DIR)
+	@rm -f coverage.out coverage.html
+
+clean-all: clean docker-clean ## Limpeza completa (build + docker)
+
+# Comandos de Instalação
+install: deps build ## Instala dependências e compila
+
+install-tools: ## Instala ferramentas de desenvolvimento
+	@echo "$(GREEN)🛠️ Instalando ferramentas de desenvolvimento...$(NC)"
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@echo "$(GREEN)✅ Ferramentas instaladas$(NC)"
+
+# Comandos de Desenvolvimento Completo
+setup: install-tools deps docker-up ## Setup completo para desenvolvimento
+	@echo "$(GREEN)🎉 Setup de desenvolvimento concluído!$(NC)"
+	@echo ""
+	@echo "$(GREEN)Próximos passos:$(NC)"
+	@echo "  1. Execute: $(YELLOW)make dev$(NC) para iniciar a aplicação"
+	@echo "  2. Acesse: $(YELLOW)http://localhost:3000$(NC) para DBGate"
+	@echo "  3. Acesse: $(YELLOW)http://localhost:8090$(NC) para Webhook Tester"
+
+# Comandos de Status
+status: ## Mostra status dos serviços Docker
+	@echo "$(GREEN)📊 Status dos serviços:$(NC)"
+	@docker-compose -f $(DOCKER_COMPOSE_FILE) ps
+
+# Comando para desenvolvimento rápido
+quick: docker-up dev ## Inicia Docker e executa app em modo dev
+
+# Comando para produção local
+prod: build docker-up ## Build e inicia com Docker para simular produção
+	@echo "$(GREEN)🚀 Executando em modo produção local...$(NC)"
+	@$(BUILD_DIR)/$(BINARY_NAME)
+
+# Comandos de Documentação Swagger
 swagger-gen: ## Gera documentação Swagger
-	@echo "📝 Gerando documentação Swagger..."
-	@./scripts/generate-docs.sh
+	@echo "$(GREEN)📝 Gerando documentação Swagger...$(NC)"
+	@if ! command -v swag &> /dev/null; then \
+		echo "$(YELLOW)⚠️ swag não encontrado. Instalando...$(NC)"; \
+		go install github.com/swaggo/swag/cmd/swag@latest; \
+	fi
+	@mkdir -p docs
+	@swag init -g cmd/server/main.go -o docs/ --parseDependency --parseInternal
+	@echo "$(GREEN)✅ Documentação Swagger gerada com sucesso!$(NC)"
+	@echo "$(GREEN)📁 Arquivos gerados: docs/docs.go, docs/swagger.json, docs/swagger.yaml$(NC)"
 
 swagger-serve: swagger-gen dev ## Gera documentação e inicia servidor
-	@echo "🌐 Documentação disponível em: http://localhost:8080/swagger/"
+	@echo "$(GREEN)🌐 Acesse a documentação em: http://localhost:8080/swagger/$(NC)"
 
 swagger-clean: ## Remove arquivos de documentação gerados
-	@echo "🧹 Limpando documentação..."
-	@rm -rf docs/
-	@echo "✅ Documentação removida"
-
-# Instalação
-install: build ## Instala o binário no sistema
-	@echo "📥 Instalando binário..."
-	@sudo cp $(BUILD_DIR)/$(BINARY_NAME) /usr/local/bin/
-	@echo "✅ Instalado em /usr/local/bin/$(BINARY_NAME)"
-
-uninstall: ## Remove o binário do sistema
-	@echo "🗑️  Removendo binário..."
-	@sudo rm -f /usr/local/bin/$(BINARY_NAME)
-	@echo "✅ Binário removido"
-
-# Informações
-version: ## Mostra informações de versão
-	@echo "WazMeow API Server"
-	@echo "=================="
-	@echo "Go version: $(shell go version)"
-	@echo "Build date: $(shell date)"
-	@echo "Git commit: $(shell git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
-
-# Banco de dados (utilitários)
-db-create: ## Cria o banco de dados PostgreSQL
-	@echo "🗄️  Criando banco de dados..."
-	@docker-compose exec postgres createdb -U postgres wazmeow || echo "Banco já existe ou erro na criação"
-
-db-drop: ## Remove o banco de dados PostgreSQL
-	@echo "🗑️  Removendo banco de dados..."
-	@docker-compose exec postgres dropdb -U postgres wazmeow || echo "Banco não existe ou erro na remoção"
-
-db-reset: ## Recria o banco de dados (requer container rodando)
-	@echo "🔄 Resetando banco de dados..."
-	@make db-drop
-	@make db-create
-	@echo "✅ Banco resetado"
-
-db-reset-docker: ## Recria o banco via Docker (remove e recria container)
-	@echo "🔄 Resetando banco via Docker..."
-	@docker-compose stop postgres
-	@docker-compose rm -f postgres
-	@docker volume rm wazmeow_postgres_data || true
-	@docker-compose up -d postgres
-	@echo "✅ Banco resetado via Docker"
-
-# ===================================
-# NOVOS COMANDOS - BUN NATIVO
-# ===================================
-
-db-auto-create: ## Criar tabelas automaticamente dos models
-	@echo "🏗️ Criando tabelas automaticamente..."
-	@go run cmd/migrate/main.go --env=dev db auto-create
-
-db-auto-validate: ## Validar schema contra models e criar faltantes
-	@echo "🔍 Validando e sincronizando schema..."
-	@go run cmd/migrate/main.go --env=dev db auto-validate
-
-db-auto-status: ## Mostrar status do schema vs models
-	@echo "📊 Verificando status do schema..."
-	@go run cmd/migrate/main.go --env=dev db auto-status
-
-db-recreate: ## Recriar todas as tabelas (DESTRÓI DADOS!)
-	@echo "⚠️ ATENÇÃO: Este comando irá destruir todos os dados!"
-	@read -p "Tem certeza? Digite 'yes' para confirmar: " confirm && [ "$$confirm" = "yes" ]
-	@go run cmd/migrate/main.go --env=dev db recreate --confirm
-	@echo "✅ Tabelas recriadas!"
-
-db-quick-setup: docker-up ## Setup completo rápido (Docker + Tables)
-	@echo "🚀 Setup completo do banco de dados..."
-	@sleep 5
-	@make db-auto-create
-	@make db-auto-status
-	@echo "🎉 Setup completo!"
-
-# Desenvolvimento
-watch: ## Executa com hot reload (requer air)
-	@echo "👀 Iniciando hot reload..."
-	@air -c .air.toml
-
-# Release
-release: clean deps test build-all ## Prepara release completo
-	@echo "🎉 Release preparado!"
-	@echo "Binários disponíveis em $(BUILD_DIR)/"
+	@echo "$(YELLOW)🧹 Removendo documentação Swagger...$(NC)"
+	@rm -f docs/docs.go docs/swagger.json docs/swagger.yaml
+	@echo "$(GREEN)✅ Documentação removida$(NC)"

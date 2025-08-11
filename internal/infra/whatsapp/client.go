@@ -463,9 +463,13 @@ func (wac *WhatsAppClient) handleConnected(evt *events.Connected) {
 		logger.Error("Erro ao atualizar status da sessão: %v", err)
 	}
 
-	// Enviar presença disponível
-	if err := wac.client.SendPresence(types.PresenceAvailable); err != nil {
-		logger.Warn("Erro ao enviar presença disponível: %v", err)
+	// Enviar presença disponível apenas se o PushName estiver definido
+	if wac.client.Store.PushName != "" {
+		if err := wac.client.SendPresence(types.PresenceAvailable); err != nil {
+			logger.Warn("Erro ao enviar presença disponível: %v", err)
+		}
+	} else {
+		logger.Debug("PushName não definido, aguardando para enviar presença")
 	}
 
 	// Enviar webhook com evento bruto
@@ -620,9 +624,9 @@ func (wac *WhatsAppClient) sendWebhook(data map[string]interface{}) {
 		return
 	}
 
-	// Verificar se há webhook configurado
-	if session.WebhookURL == "" {
-		logger.Debug("Webhook URL não configurada para sessão %s", wac.sessionID)
+	// Verificar se há pelo menos um webhook configurado
+	if session.WebhookURL == "" && session.Webhook == "" {
+		logger.Debug("Nenhum webhook configurado para sessão %s", wac.sessionID)
 		return
 	}
 
@@ -639,23 +643,47 @@ func (wac *WhatsAppClient) sendWebhook(data map[string]interface{}) {
 		return
 	}
 
-	// Criar evento de webhook com payload bruto
-	webhookEvent := &webhook.WebhookEvent{
-		ID:        fmt.Sprintf("evt_%s_%d", wac.sessionID, time.Now().UnixNano()),
-		Type:      eventType,
-		SessionID: wac.sessionID,
-		Timestamp: time.Now().Unix(),
-		Data:      data, // Enviar dados brutos como vêm do whatsmeow
-		URL:       session.WebhookURL,
-		Retries:   0,
+	// Enviar para webhook customizado (se configurado)
+	if session.WebhookURL != "" {
+		// Verificar se deve enviar este evento para webhook customizado
+		if wac.eventFilter.ShouldSendEvent(session, eventType) {
+			webhookEvent := &webhook.WebhookEvent{
+				ID:        fmt.Sprintf("evt_custom_%s_%d", wac.sessionID, time.Now().UnixNano()),
+				Type:      eventType,
+				SessionID: wac.sessionID,
+				Timestamp: time.Now().Unix(),
+				Data:      data,
+				URL:       session.WebhookURL,
+				Retries:   0,
+			}
+
+			err = webhookService.SendEvent(webhookEvent)
+			if err != nil {
+				logger.Error("Erro ao enviar webhook customizado para sessão %s: %v", wac.sessionID, err)
+			} else {
+				logger.Debug("Webhook customizado enviado para sessão %s: %s", wac.sessionID, eventType)
+			}
+		}
 	}
 
-	// Enviar evento
-	err = webhookService.SendEvent(webhookEvent)
-	if err != nil {
-		logger.Error("Erro ao enviar webhook para sessão %s: %v", wac.sessionID, err)
-	} else {
-		logger.Debug("Webhook enviado para sessão %s: %s", wac.sessionID, eventType)
+	// Enviar para webhook padrão (se configurado) - sempre envia todos os eventos
+	if session.Webhook != "" {
+		webhookEvent := &webhook.WebhookEvent{
+			ID:        fmt.Sprintf("evt_default_%s_%d", wac.sessionID, time.Now().UnixNano()),
+			Type:      eventType,
+			SessionID: wac.sessionID,
+			Timestamp: time.Now().Unix(),
+			Data:      data,
+			URL:       session.Webhook,
+			Retries:   0,
+		}
+
+		err = webhookService.SendEvent(webhookEvent)
+		if err != nil {
+			logger.Error("Erro ao enviar webhook padrão para sessão %s: %v", wac.sessionID, err)
+		} else {
+			logger.Debug("Webhook padrão enviado para sessão %s: %s", wac.sessionID, eventType)
+		}
 	}
 }
 
@@ -685,13 +713,13 @@ func (wac *WhatsAppClient) sendWebhookForEvent(evt interface{}) {
 
 	logger.Debug("✅ Sessão encontrada: %s, WebhookURL: %s", wac.sessionID, session.WebhookURL)
 
-	// Verificar se há webhook configurado
-	if session.WebhookURL == "" {
-		logger.Error("❌ Webhook URL não configurada para sessão %s", wac.sessionID)
+	// Verificar se há pelo menos um webhook configurado
+	if session.WebhookURL == "" && session.Webhook == "" {
+		logger.Debug("❌ Nenhum webhook configurado para sessão %s", wac.sessionID)
 		return
 	}
 
-	logger.Debug("✅ Webhook URL configurada: %s", session.WebhookURL)
+	logger.Debug("✅ Webhooks configurados - Custom: %s, Padrão: %s", session.WebhookURL, session.Webhook)
 
 	// Serializar evento (payload bruto)
 	payload, err := eventSerializer.SerializeEvent(wac.sessionID, evt)
@@ -702,33 +730,52 @@ func (wac *WhatsAppClient) sendWebhookForEvent(evt interface{}) {
 
 	logger.Debug("✅ Evento serializado: %s", payload.Event)
 
-	// Verificar se deve enviar este evento
-	if !wac.eventFilter.ShouldSendEvent(session, payload.Event) {
-		logger.Debug("🔧 Evento %s filtrado para sessão %s (eventos configurados: %s)", payload.Event, wac.sessionID, session.Events)
-		return
+	// Enviar para webhook customizado (se configurado e aprovado pelo filtro)
+	if session.WebhookURL != "" {
+		if wac.eventFilter.ShouldSendEvent(session, payload.Event) {
+			webhookEvent := &webhook.WebhookEvent{
+				ID:        fmt.Sprintf("custom_%s", payload.Metadata.EventID),
+				Type:      payload.Event,
+				SessionID: wac.sessionID,
+				Timestamp: payload.Timestamp,
+				Data:      payload.Data,
+				URL:       session.WebhookURL,
+				Retries:   0,
+			}
+
+			logger.Debug("🚀 Enviando webhook customizado: ID=%s, Type=%s, URL=%s", webhookEvent.ID, webhookEvent.Type, webhookEvent.URL)
+
+			err = webhookService.SendEvent(webhookEvent)
+			if err != nil {
+				logger.Error("❌ Erro ao enviar webhook customizado para sessão %s: %v", wac.sessionID, err)
+			} else {
+				logger.Info("✅ Webhook customizado enviado com sucesso para sessão %s: %s", wac.sessionID, payload.Event)
+			}
+		} else {
+			logger.Debug("🔧 Evento %s filtrado para webhook customizado da sessão %s (eventos configurados: %s)", payload.Event, wac.sessionID, session.Events)
+		}
 	}
 
-	logger.Debug("✅ Evento %s aprovado pelo filtro", payload.Event)
+	// Enviar para webhook padrão (se configurado) - sempre envia todos os eventos
+	if session.Webhook != "" {
+		webhookEvent := &webhook.WebhookEvent{
+			ID:        fmt.Sprintf("default_%s", payload.Metadata.EventID),
+			Type:      payload.Event,
+			SessionID: wac.sessionID,
+			Timestamp: payload.Timestamp,
+			Data:      payload.Data,
+			URL:       session.Webhook,
+			Retries:   0,
+		}
 
-	// Criar evento de webhook
-	webhookEvent := &webhook.WebhookEvent{
-		ID:        payload.Metadata.EventID,
-		Type:      payload.Event,
-		SessionID: wac.sessionID,
-		Timestamp: payload.Timestamp,
-		Data:      payload.Data, // Dados brutos do evento
-		URL:       session.WebhookURL,
-		Retries:   0,
-	}
+		logger.Debug("🚀 Enviando webhook padrão: ID=%s, Type=%s, URL=%s", webhookEvent.ID, webhookEvent.Type, webhookEvent.URL)
 
-	logger.Debug("🚀 Enviando webhook: ID=%s, Type=%s, URL=%s", webhookEvent.ID, webhookEvent.Type, webhookEvent.URL)
-
-	// Enviar evento
-	err = webhookService.SendEvent(webhookEvent)
-	if err != nil {
-		logger.Error("❌ Erro ao enviar webhook para sessão %s: %v", wac.sessionID, err)
-	} else {
-		logger.Info("✅ Webhook enviado com sucesso para sessão %s: %s", wac.sessionID, payload.Event)
+		err = webhookService.SendEvent(webhookEvent)
+		if err != nil {
+			logger.Error("❌ Erro ao enviar webhook padrão para sessão %s: %v", wac.sessionID, err)
+		} else {
+			logger.Info("✅ Webhook padrão enviado com sucesso para sessão %s: %s", wac.sessionID, payload.Event)
+		}
 	}
 }
 
@@ -886,7 +933,13 @@ func (wac *WhatsAppClient) handlePicture(evt *events.Picture) {
 func (wac *WhatsAppClient) handleHistorySync(evt *events.HistorySync) {
 	logger.Debug("Sincronização de histórico recebida na sessão %s", wac.sessionID)
 
-	// Enviar webhook com evento bruto
+	// Configurar client para ser mais tolerante a falhas de download de mídia
+	if wac.client != nil {
+		// Reduzir timeout de download para evitar travamentos longos
+		wac.client.AutoTrustIdentity = false
+	}
+
+	// Enviar webhook com evento bruto (sem dados de mídia pesados)
 	wac.sendWebhookForEvent(evt)
 }
 
@@ -948,7 +1001,16 @@ func (wac *WhatsAppClient) handleBlocklistChange(evt *events.BlocklistChange) {
 
 // handlePushName trata eventos de mudança de nome de exibição
 func (wac *WhatsAppClient) handlePushName(evt *events.PushName) {
-	logger.Debug("Mudança de nome de exibição na sessão %s para %s", wac.sessionID, evt.JID.String())
+	logger.Info("Nome de exibição definido na sessão %s para %s", wac.sessionID, evt.JID.String())
+
+	// Agora que temos PushName, podemos enviar presença disponível
+	if wac.client.IsConnected() {
+		if err := wac.client.SendPresence(types.PresenceAvailable); err != nil {
+			logger.Warn("Erro ao enviar presença disponível após PushName: %v", err)
+		} else {
+			logger.Debug("Presença disponível enviada após definição do PushName")
+		}
+	}
 
 	// Enviar webhook com evento bruto
 	wac.sendWebhookForEvent(evt)

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"wazmeow/internal/infra/models"
 	"wazmeow/pkg/logger"
 
 	"github.com/uptrace/bun"
@@ -58,17 +57,9 @@ func NewBunConnection(cfg Config) (*BunConnection, error) {
 
 	logger.Info("Conexão Bun estabelecida com sucesso")
 
-	return &BunConnection{DB: db}, nil
-}
-
-// RegisterModels registra os modelos no Bun para uso com ORM
-func (c *BunConnection) RegisterModels() {
-	logger.Info("Registrando modelos Bun...")
-
-	// Registrar modelos no Bun
-	c.DB.RegisterModel((*models.SessionModel)(nil))
-
-	logger.Info("Modelos Bun registrados com sucesso")
+	return &BunConnection{
+		DB: db,
+	}, nil
 }
 
 // Health verifica se a conexão está saudável
@@ -136,5 +127,14 @@ func (c *BunConnection) RunInTransaction(ctx context.Context, fn func(tx bun.Tx)
 
 // EnsureSchema garante que as tabelas existam baseado nos models
 func (c *BunConnection) EnsureSchema(ctx context.Context) error {
-	return ValidateSchema(ctx, c.DB)
+	logger.Info("🔧 Garantindo schema atualizado...")
+
+	// Usar ValidateSchema do auto_migrations.go
+	err := ValidateSchema(ctx, c.DB)
+	if err != nil {
+		return fmt.Errorf("erro ao validar/criar schema: %w", err)
+	}
+
+	logger.Info("✅ Schema validado com sucesso")
+	return nil
 }

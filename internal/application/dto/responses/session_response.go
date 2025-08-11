@@ -2,8 +2,6 @@ package responses
 
 import "wazmeow/internal/domain/entity"
 
-
-
 // SessionInfo representa informações detalhadas de uma sessão
 type SessionInfo struct {
 	*entity.Session

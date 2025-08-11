@@ -73,7 +73,7 @@ func (wd *WebhookDispatcher) Send(event *WebhookEvent) error {
 		duration := time.Since(startTime)
 		wd.service.metrics.RecordLatency(duration)
 		wd.service.circuitBreaker.RecordFailure(event.URL)
-		
+
 		logger.Error("Erro ao enviar webhook para %s: %v", event.URL, err)
 		return fmt.Errorf("erro ao enviar webhook: %w", err)
 	}
@@ -87,19 +87,19 @@ func (wd *WebhookDispatcher) Send(event *WebhookEvent) error {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		// Ler corpo da resposta para log
 		body, _ := io.ReadAll(resp.Body)
-		
+
 		wd.service.circuitBreaker.RecordFailure(event.URL)
-		
-		logger.Error("Webhook retornou status %d para %s: %s", 
+
+		logger.Error("Webhook retornou status %d para %s: %s",
 			resp.StatusCode, event.URL, string(body))
-		
+
 		return fmt.Errorf("webhook retornou status %d", resp.StatusCode)
 	}
 
 	// Sucesso
 	wd.service.circuitBreaker.RecordSuccess(event.URL)
-	
-	logger.Debug("Webhook enviado com sucesso para %s (status: %d, latência: %v)", 
+
+	logger.Debug("Webhook enviado com sucesso para %s (status: %d, latência: %v)",
 		event.URL, resp.StatusCode, duration)
 
 	return nil
@@ -108,12 +108,12 @@ func (wd *WebhookDispatcher) Send(event *WebhookEvent) error {
 // SendWithRetry envia um webhook com retry automático
 func (wd *WebhookDispatcher) SendWithRetry(event *WebhookEvent) error {
 	var lastErr error
-	
+
 	for attempt := 0; attempt <= wd.service.config.MaxRetries; attempt++ {
 		if attempt > 0 {
 			// Aguardar antes do retry
 			delay := wd.calculateRetryDelay(attempt)
-			logger.Debug("Aguardando %v antes do retry %d para webhook %s", 
+			logger.Debug("Aguardando %v antes do retry %d para webhook %s",
 				delay, attempt, event.ID)
 			time.Sleep(delay)
 		}
@@ -121,42 +121,42 @@ func (wd *WebhookDispatcher) SendWithRetry(event *WebhookEvent) error {
 		err := wd.Send(event)
 		if err == nil {
 			if attempt > 0 {
-				logger.Info("Webhook %s enviado com sucesso após %d tentativas", 
+				logger.Info("Webhook %s enviado com sucesso após %d tentativas",
 					event.ID, attempt+1)
 			}
 			return nil
 		}
 
 		lastErr = err
-		logger.Warn("Tentativa %d falhou para webhook %s: %v", 
+		logger.Warn("Tentativa %d falhou para webhook %s: %v",
 			attempt+1, event.ID, err)
 	}
 
-	logger.Error("Webhook %s falhou após %d tentativas: %v", 
+	logger.Error("Webhook %s falhou após %d tentativas: %v",
 		event.ID, wd.service.config.MaxRetries+1, lastErr)
-	
-	return fmt.Errorf("webhook falhou após %d tentativas: %w", 
+
+	return fmt.Errorf("webhook falhou após %d tentativas: %w",
 		wd.service.config.MaxRetries+1, lastErr)
 }
 
 // calculateRetryDelay calcula o delay para retry com backoff exponencial
 func (wd *WebhookDispatcher) calculateRetryDelay(attempt int) time.Duration {
 	baseDelay := wd.service.config.RetryDelay
-	
+
 	// Backoff exponencial: delay * 2^attempt
 	multiplier := 1 << uint(attempt-1) // 2^(attempt-1)
 	if multiplier > 8 {
 		multiplier = 8 // Limitar o multiplicador máximo
 	}
-	
+
 	delay := time.Duration(multiplier) * baseDelay
-	
+
 	// Limitar delay máximo a 5 minutos
 	maxDelay := 5 * time.Minute
 	if delay > maxDelay {
 		delay = maxDelay
 	}
-	
+
 	return delay
 }
 
@@ -187,7 +187,7 @@ func (wd *WebhookDispatcher) ValidateWebhookURL(url string) error {
 	// Aceitar qualquer status code para validação
 	// O importante é que a URL seja acessível
 	logger.Debug("Webhook URL %s validada (status: %d)", url, resp.StatusCode)
-	
+
 	return nil
 }
 

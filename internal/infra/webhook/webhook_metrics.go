@@ -8,23 +8,23 @@ import (
 // WebhookMetrics coleta métricas do sistema de webhooks
 type WebhookMetrics struct {
 	// Contadores
-	totalAttempts     int64
-	totalSuccess      int64
-	totalFailed       int64
-	totalQueued       int64
-	totalQueueFull    int64
-	totalRateLimited  int64
-	totalCBOpen       int64
+	totalAttempts    int64
+	totalSuccess     int64
+	totalFailed      int64
+	totalQueued      int64
+	totalQueueFull   int64
+	totalRateLimited int64
+	totalCBOpen      int64
 
 	// Latência
-	totalLatency    time.Duration
-	minLatency      time.Duration
-	maxLatency      time.Duration
-	latencyCount    int64
+	totalLatency time.Duration
+	minLatency   time.Duration
+	maxLatency   time.Duration
+	latencyCount int64
 
 	// Timestamps
-	startTime       time.Time
-	lastEventTime   time.Time
+	startTime     time.Time
+	lastEventTime time.Time
 
 	mu sync.RWMutex
 }
@@ -100,18 +100,18 @@ func (wm *WebhookMetrics) IncrementCircuitBreakerOpen() {
 func (wm *WebhookMetrics) RecordLatency(latency time.Duration) {
 	wm.mu.Lock()
 	defer wm.mu.Unlock()
-	
+
 	wm.totalLatency += latency
 	wm.latencyCount++
-	
+
 	if wm.minLatency == 0 || latency < wm.minLatency {
 		wm.minLatency = latency
 	}
-	
+
 	if latency > wm.maxLatency {
 		wm.maxLatency = latency
 	}
-	
+
 	wm.lastEventTime = time.Now()
 }
 
@@ -121,7 +121,7 @@ func (wm *WebhookMetrics) GetStats() map[string]interface{} {
 	defer wm.mu.RUnlock()
 
 	uptime := time.Since(wm.startTime)
-	
+
 	stats := map[string]interface{}{
 		"uptime": map[string]interface{}{
 			"start_time":      wm.startTime,
@@ -129,25 +129,25 @@ func (wm *WebhookMetrics) GetStats() map[string]interface{} {
 			"last_event_time": wm.lastEventTime,
 		},
 		"counters": map[string]interface{}{
-			"total_attempts":      wm.totalAttempts,
-			"total_success":       wm.totalSuccess,
-			"total_failed":        wm.totalFailed,
-			"total_queued":        wm.totalQueued,
-			"total_queue_full":    wm.totalQueueFull,
-			"total_rate_limited":  wm.totalRateLimited,
-			"total_cb_open":       wm.totalCBOpen,
+			"total_attempts":     wm.totalAttempts,
+			"total_success":      wm.totalSuccess,
+			"total_failed":       wm.totalFailed,
+			"total_queued":       wm.totalQueued,
+			"total_queue_full":   wm.totalQueueFull,
+			"total_rate_limited": wm.totalRateLimited,
+			"total_cb_open":      wm.totalCBOpen,
 		},
 		"rates": map[string]interface{}{
-			"success_rate":     wm.calculateSuccessRate(),
-			"failure_rate":     wm.calculateFailureRate(),
+			"success_rate":      wm.calculateSuccessRate(),
+			"failure_rate":      wm.calculateFailureRate(),
 			"events_per_second": wm.calculateEventsPerSecond(uptime),
 		},
 		"latency": map[string]interface{}{
-			"min_latency_ms":     wm.minLatency.Milliseconds(),
-			"max_latency_ms":     wm.maxLatency.Milliseconds(),
-			"avg_latency_ms":     wm.calculateAverageLatency().Milliseconds(),
-			"total_latency_ms":   wm.totalLatency.Milliseconds(),
-			"latency_count":      wm.latencyCount,
+			"min_latency_ms":   wm.minLatency.Milliseconds(),
+			"max_latency_ms":   wm.maxLatency.Milliseconds(),
+			"avg_latency_ms":   wm.calculateAverageLatency().Milliseconds(),
+			"total_latency_ms": wm.totalLatency.Milliseconds(),
+			"latency_count":    wm.latencyCount,
 		},
 	}
 
@@ -213,11 +213,11 @@ func (wm *WebhookMetrics) GetSummary() map[string]interface{} {
 	defer wm.mu.RUnlock()
 
 	return map[string]interface{}{
-		"total_attempts":   wm.totalAttempts,
-		"total_success":    wm.totalSuccess,
-		"total_failed":     wm.totalFailed,
-		"success_rate":     wm.calculateSuccessRate(),
-		"avg_latency_ms":   wm.calculateAverageLatency().Milliseconds(),
-		"uptime_seconds":   time.Since(wm.startTime).Seconds(),
+		"total_attempts": wm.totalAttempts,
+		"total_success":  wm.totalSuccess,
+		"total_failed":   wm.totalFailed,
+		"success_rate":   wm.calculateSuccessRate(),
+		"avg_latency_ms": wm.calculateAverageLatency().Milliseconds(),
+		"uptime_seconds": time.Since(wm.startTime).Seconds(),
 	}
 }

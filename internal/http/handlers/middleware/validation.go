@@ -23,7 +23,7 @@ const (
 func SessionValidator(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		sessionID := chi.URLParam(r, "sessionID")
-		
+
 		// Valida o sessionID
 		if err := base.ValidateSessionID(sessionID); err != nil {
 			base.SendError(w, err, base.GetHTTPStatus(err))
@@ -39,7 +39,7 @@ func SessionValidator(next http.Handler) http.Handler {
 // RequestValidator middleware que adiciona validador ao contexto
 func RequestValidator(next http.Handler) http.Handler {
 	validator := base.NewValidator()
-	
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Adiciona validador ao contexto
 		ctx := context.WithValue(r.Context(), ValidatorKey, validator)
@@ -60,11 +60,11 @@ func ErrorRecovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				base.SendInternalError(w, "processar requisição", 
+				base.SendInternalError(w, "processar requisição",
 					base.NewInternalError("panic recuperado", nil))
 			}
 		}()
-		
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -74,7 +74,7 @@ func RequestLogging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		baseHandler := base.NewBaseHandler()
 		baseHandler.LogRequest(r, "Incoming request")
-		
+
 		next.ServeHTTP(w, r)
 	})
 }

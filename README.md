@@ -30,6 +30,45 @@ Uma API REST completa para gerenciar sessões do WhatsApp usando Go e a bibliote
 - **HTTP Router**: Chi v5
 - **Containerização**: Docker & Docker Compose
 
+## ⚡ Comandos Rápidos (Makefile)
+
+O projeto inclui um Makefile com comandos para facilitar o desenvolvimento:
+
+```bash
+# Ver todos os comandos disponíveis
+make help
+
+# Setup completo para desenvolvimento
+make setup
+
+# Desenvolvimento rápido (Docker + app)
+make quick
+
+# Comandos básicos
+make build          # Compila a aplicação
+make run            # Compila e executa
+make dev            # Executa em modo desenvolvimento
+make test           # Executa testes
+make clean          # Limpa arquivos de build
+
+# Docker Compose
+make docker-up      # Inicia PostgreSQL, Redis, DBGate, Webhook Tester
+make docker-down    # Para todos os serviços
+make docker-logs    # Mostra logs dos serviços
+make status         # Status dos serviços
+
+# Qualidade de código
+make fmt            # Formata código
+make vet            # Executa go vet
+make lint           # Executa linter
+make check          # Formata + vet + testes
+
+# Documentação Swagger
+make swagger-gen    # Gera documentação Swagger
+make swagger-serve  # Gera documentação e inicia servidor
+make swagger-clean  # Remove arquivos de documentação
+```
+
 ## 📱 Implementação WhatsApp
 
 A implementação do WhatsApp foi baseada no arquivo de referência `@reference/wuzapi/wmiau.go` e inclui:
