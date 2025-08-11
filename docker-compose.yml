@@ -1,95 +1,86 @@
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: wazmeow-postgres
-    restart: unless-stopped
     environment:
-      POSTGRES_DB: wazmeow
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - wazmeow-network
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d wazmeow"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: wazmeow-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass redispassword
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
     networks:
       - wazmeow-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
 
-  # DBGate - Database Administration Tool
   dbgate:
     image: dbgate/dbgate:latest
     container_name: wazmeow-dbgate
-    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      CONNECTIONS: con1
+      LABEL_con1: WazMeow PostgreSQL
+      SERVER_con1: postgres
+      USER_con1: ${DB_USER}
+      PASSWORD_con1: ${DB_PASSWORD}
+      PORT_con1: ${DB_PORT}
+      ENGINE_con1: postgres@dbgate-plugin-postgres
+      DATABASE_con1: ${DB_NAME}
     ports:
       - "3000:3000"
-    environment:
-      CONNECTIONS: con1,con2
-      LABEL_con1: PostgreSQL
-      SERVER_con1: postgres
-      USER_con1: postgres
-      PASSWORD_con1: password
-      PORT_con1: 5432
-      ENGINE_con1: postgres@dbgate-plugin-postgres
-      LABEL_con2: Redis
-      URL_con2: redis://redis:6379
-      ENGINE_con2: redis@dbgate-plugin-redis
+    networks:
+      - wazmeow-network
+    restart: unless-stopped
+
+  wazmeow:
+    build: .
+    container_name: wazmeow-app
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - wazmeow-network
-
-  # Webhook Tester - Para testar webhooks durante desenvolvimento
-  webhook-tester:
-    image: tarampampam/webhook-tester:latest
-    container_name: wazmeow-webhook-tester
-    restart: unless-stopped
-    ports:
-      - "8090:8080"
     environment:
-      - LISTEN_ADDR=0.0.0.0
-      - LISTEN_PORT=8080
-      - MAX_REQUESTS=0
-      - CREATE_SESSION=true
-      - SESSION_TTL=168h
-      - IGNORE_HEADER_NAMES=
-      - RESPONSE_DELAY=0s
-      - RESPONSE_CODE=200
-      - RESPONSE_BODY=OK
+      # Database Configuration
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_SSLMODE: ${DB_SSLMODE}
+      DB_DEBUG: ${DB_DEBUG}
+
+      # Server Configuration
+      SERVER_HOST: ${SERVER_HOST}
+      SERVER_PORT: ${SERVER_PORT}
+
+      # WhatsApp Configuration
+      WA_DEBUG: ${WA_DEBUG}
+      WA_OS_NAME: ${WA_OS_NAME}
+
+      # Logging Configuration
+      LOG_LEVEL: ${LOG_LEVEL}
+      LOG_FORMAT: ${LOG_FORMAT}
+
+      # SSL Configuration (optional)
+      SSL_CERT_FILE: ${SSL_CERT_FILE}
+      SSL_KEY_FILE: ${SSL_KEY_FILE}
+    ports:
+      - "8080:8080"
     networks:
       - wazmeow-network
+    restart: unless-stopped
+    # Para ver QR codes no terminal em produção
+    stdin_open: true
+    tty: true
 
 volumes:
   postgres_data:
-    driver: local
-  redis_data:
-    driver: local
 
 networks:
   wazmeow-network:

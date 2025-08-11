@@ -1,166 +1,103 @@
-# Makefile para WazMeow
-# Comandos básicos para desenvolvimento e deploy
+# WazMeow - WhatsApp Session Management API
+# Makefile for development and deployment
 
-# Variáveis
-APP_NAME = wazmeow
-BINARY_NAME = wazmeow
-MAIN_PATH = ./cmd/server
-BUILD_DIR = ./bin
-DOCKER_COMPOSE_FILE = docker-compose.yml
+.PHONY: help build run clean deps fmt lint up down restart status logs logs-app logs-db logs-dbgate db-shell db-admin db-reset cleanup dev build-prod
 
-# Cores para output
-GREEN = \033[0;32m
-YELLOW = \033[0;33m
-RED = \033[0;31m
-NC = \033[0m # No Color
-
-.PHONY: help build run clean test deps docker-up docker-down docker-logs docker-restart dev install lint fmt vet check swagger-gen swagger-serve swagger-clean
-
-# Comando padrão
-help: ## Mostra esta ajuda
-	@echo "$(GREEN)WazMeow - Comandos disponíveis:$(NC)"
+# Default target
+help: ## Show this help message
+	@echo "WazMeow - WhatsApp Session Management API"
 	@echo ""
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-15s$(NC) %s\n", $$1, $$2}'
-	@echo ""
+	@echo "Available commands:"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-# Comandos de Build
-build: ## Compila a aplicação
-	@echo "$(GREEN)🔨 Compilando $(APP_NAME)...$(NC)"
-	@mkdir -p $(BUILD_DIR)
-	@go build -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
-	@echo "$(GREEN)✅ Build concluído: $(BUILD_DIR)/$(BINARY_NAME)$(NC)"
+# Development
+deps: ## Install dependencies
+	go mod tidy
+	go mod download
 
-build-linux: ## Compila para Linux (útil para Docker)
-	@echo "$(GREEN)🔨 Compilando $(APP_NAME) para Linux...$(NC)"
-	@mkdir -p $(BUILD_DIR)
-	@GOOS=linux GOARCH=amd64 go build -o $(BUILD_DIR)/$(BINARY_NAME)-linux $(MAIN_PATH)
-	@echo "$(GREEN)✅ Build Linux concluído: $(BUILD_DIR)/$(BINARY_NAME)-linux$(NC)"
+fmt: ## Format code
+	go fmt ./...
 
-# Comandos de Execução
-run: build ## Compila e executa a aplicação
-	@echo "$(GREEN)🚀 Executando $(APP_NAME)...$(NC)"
-	@$(BUILD_DIR)/$(BINARY_NAME)
+lint: ## Run linter
+	golangci-lint run
 
-dev: ## Executa em modo desenvolvimento (com go run)
-	@echo "$(GREEN)🔥 Executando em modo desenvolvimento...$(NC)"
-	@go run $(MAIN_PATH)
+build: ## Build the application
+	go build -o bin/wazmeow cmd/server/main.go
 
-# Comandos de Teste e Qualidade
-test: ## Executa todos os testes
-	@echo "$(GREEN)🧪 Executando testes...$(NC)"
-	@go test ./... -v
+run: ## Run the application
+	go run cmd/server/main.go
 
-test-coverage: ## Executa testes com coverage
-	@echo "$(GREEN)🧪 Executando testes com coverage...$(NC)"
-	@go test ./... -coverprofile=coverage.out
-	@go tool cover -html=coverage.out -o coverage.html
-	@echo "$(GREEN)📊 Coverage report: coverage.html$(NC)"
+clean: ## Clean build artifacts
+	rm -rf bin/
+	go clean
 
-lint: ## Executa linter (golangci-lint)
-	@echo "$(GREEN)🔍 Executando linter...$(NC)"
-	@golangci-lint run
+# Docker Compose Commands
+up: ## Start all services with Docker Compose
+	@echo "🚀 Starting WazMeow services..."
+	docker-compose up -d --build
+	@echo "✅ Services started! API available at http://localhost:8080"
 
-fmt: ## Formata o código
-	@echo "$(GREEN)✨ Formatando código...$(NC)"
-	@go fmt ./...
+down: ## Stop all services
+	@echo "🛑 Stopping WazMeow services..."
+	docker-compose down
+	@echo "✅ Services stopped!"
 
-vet: ## Executa go vet
-	@echo "$(GREEN)🔍 Executando go vet...$(NC)"
-	@go vet ./...
+restart: ## Restart all services
+	@echo "🔄 Restarting WazMeow services..."
+	docker-compose down
+	docker-compose up -d --build
+	@echo "✅ Services restarted!"
 
-check: fmt vet test ## Executa formatação, vet e testes
+status: ## Show service status
+	@echo "📊 Service Status:"
+	docker-compose ps
 
-# Comandos de Dependências
-deps: ## Baixa e organiza dependências
-	@echo "$(GREEN)📦 Baixando dependências...$(NC)"
-	@go mod download
-	@go mod tidy
+logs: ## Show logs for all services
+	docker-compose logs -f
 
-deps-update: ## Atualiza todas as dependências
-	@echo "$(GREEN)📦 Atualizando dependências...$(NC)"
-	@go get -u ./...
-	@go mod tidy
+logs-app: ## Show logs for WazMeow app only
+	docker-compose logs -f wazmeow
 
-# Comandos Docker Compose
-docker-up: ## Inicia todos os serviços (PostgreSQL, Redis, DBGate, Webhook Tester)
-	@echo "$(GREEN)🐳 Iniciando serviços Docker...$(NC)"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) up -d
-	@echo "$(GREEN)✅ Serviços iniciados:$(NC)"
-	@echo "  📊 DBGate (Admin DB): http://localhost:3000"
-	@echo "  🔗 Webhook Tester: http://localhost:8090"
-	@echo "  🐘 PostgreSQL: localhost:5432"
-	@echo "  🔴 Redis: localhost:6379"
+logs-db: ## Show logs for PostgreSQL only
+	docker-compose logs -f postgres
 
-docker-down: ## Para todos os serviços
-	@echo "$(YELLOW)🐳 Parando serviços Docker...$(NC)"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) down
+logs-dbgate: ## Show logs for DBGate only
+	docker-compose logs -f dbgate
 
-docker-restart: ## Reinicia todos os serviços
-	@echo "$(YELLOW)🐳 Reiniciando serviços Docker...$(NC)"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) restart
+db-shell: ## Connect to PostgreSQL database
+	@echo "🗄️  Connecting to PostgreSQL..."
+	docker-compose exec postgres psql -U postgres -d wazmeow
 
-docker-logs: ## Mostra logs dos serviços
-	@echo "$(GREEN)📋 Logs dos serviços Docker:$(NC)"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) logs -f
+db-admin: ## Open DBGate database admin interface
+	@echo "🗄️  Opening DBGate database admin..."
+	@echo "DBGate is available at: http://localhost:3000"
+	@command -v open >/dev/null 2>&1 && open http://localhost:3000 || \
+	command -v xdg-open >/dev/null 2>&1 && xdg-open http://localhost:3000 || \
+	echo "Please open http://localhost:3000 in your browser"
 
-docker-clean: ## Remove containers, volumes e imagens
-	@echo "$(RED)🧹 Limpando Docker (containers, volumes, imagens)...$(NC)"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) down -v --rmi all
-
-# Comandos de Limpeza
-clean: ## Remove arquivos de build
-	@echo "$(YELLOW)🧹 Limpando arquivos de build...$(NC)"
-	@rm -rf $(BUILD_DIR)
-	@rm -f coverage.out coverage.html
-
-clean-all: clean docker-clean ## Limpeza completa (build + docker)
-
-# Comandos de Instalação
-install: deps build ## Instala dependências e compila
-
-install-tools: ## Instala ferramentas de desenvolvimento
-	@echo "$(GREEN)🛠️ Instalando ferramentas de desenvolvimento...$(NC)"
-	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	@echo "$(GREEN)✅ Ferramentas instaladas$(NC)"
-
-# Comandos de Desenvolvimento Completo
-setup: install-tools deps docker-up ## Setup completo para desenvolvimento
-	@echo "$(GREEN)🎉 Setup de desenvolvimento concluído!$(NC)"
-	@echo ""
-	@echo "$(GREEN)Próximos passos:$(NC)"
-	@echo "  1. Execute: $(YELLOW)make dev$(NC) para iniciar a aplicação"
-	@echo "  2. Acesse: $(YELLOW)http://localhost:3000$(NC) para DBGate"
-	@echo "  3. Acesse: $(YELLOW)http://localhost:8090$(NC) para Webhook Tester"
-
-# Comandos de Status
-status: ## Mostra status dos serviços Docker
-	@echo "$(GREEN)📊 Status dos serviços:$(NC)"
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) ps
-
-# Comando para desenvolvimento rápido
-quick: docker-up dev ## Inicia Docker e executa app em modo dev
-
-# Comando para produção local
-prod: build docker-up ## Build e inicia com Docker para simular produção
-	@echo "$(GREEN)🚀 Executando em modo produção local...$(NC)"
-	@$(BUILD_DIR)/$(BINARY_NAME)
-
-# Comandos de Documentação Swagger
-swagger-gen: ## Gera documentação Swagger
-	@echo "$(GREEN)📝 Gerando documentação Swagger...$(NC)"
-	@if ! command -v swag &> /dev/null; then \
-		echo "$(YELLOW)⚠️ swag não encontrado. Instalando...$(NC)"; \
-		go install github.com/swaggo/swag/cmd/swag@latest; \
+db-reset: ## Reset database (WARNING: destroys all data)
+	@echo "⚠️  Resetting database (this will destroy all data)..."
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		echo ""; \
+		docker-compose down -v; \
+		docker-compose up -d postgres; \
+		echo "✅ Database reset complete!"; \
+	else \
+		echo ""; \
+		echo "❌ Database reset cancelled."; \
 	fi
-	@mkdir -p docs
-	@swag init -g cmd/server/main.go -o docs/ --parseDependency --parseInternal
-	@echo "$(GREEN)✅ Documentação Swagger gerada com sucesso!$(NC)"
-	@echo "$(GREEN)📁 Arquivos gerados: docs/docs.go, docs/swagger.json, docs/swagger.yaml$(NC)"
 
-swagger-serve: swagger-gen dev ## Gera documentação e inicia servidor
-	@echo "$(GREEN)🌐 Acesse a documentação em: http://localhost:8080/swagger/$(NC)"
+cleanup: ## Clean up Docker resources
+	@echo "🧹 Cleaning up Docker resources..."
+	docker-compose down --volumes --remove-orphans
+	docker system prune -f
+	@echo "✅ Cleanup complete!"
 
-swagger-clean: ## Remove arquivos de documentação gerados
-	@echo "$(YELLOW)🧹 Removendo documentação Swagger...$(NC)"
-	@rm -f docs/docs.go docs/swagger.json docs/swagger.yaml
-	@echo "$(GREEN)✅ Documentação removida$(NC)"
+# Development with hot reload (requires air)
+dev: ## Run with hot reload
+	air
+
+# Production
+build-prod: ## Build for production
+	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/wazmeow cmd/server/main.go

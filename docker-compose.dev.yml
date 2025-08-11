@@ -1,0 +1,55 @@
+# Docker Compose para Desenvolvimento Local
+# Use: docker-compose -f docker-compose.dev.yml up
+# 
+# Este arquivo é otimizado para desenvolvimento local onde você quer:
+# - Ver QR codes no terminal
+# - Rodar a aplicação Go diretamente no host
+# - Ter acesso direto ao banco de dados
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: wazmeow-postgres-dev
+    environment:
+      POSTGRES_DB: wazmeow
+      POSTGRES_USER: wazmeow
+      POSTGRES_PASSWORD: wazmeow123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wazmeow -d wazmeow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wazmeow-dev-network
+
+  dbgate:
+    image: dbgate/dbgate:latest
+    container_name: wazmeow-dbgate-dev
+    depends_on:
+      - postgres
+    environment:
+      CONNECTIONS: con1
+      LABEL_con1: WazMeow PostgreSQL (Dev)
+      SERVER_con1: postgres
+      USER_con1: wazmeow
+      PASSWORD_con1: wazmeow123
+      PORT_con1: 5432
+      ENGINE_con1: postgres@dbgate-plugin-postgres
+      DATABASE_con1: wazmeow
+    ports:
+      - "3000:3000"
+    networks:
+      - wazmeow-dev-network
+    restart: unless-stopped
+
+volumes:
+  postgres_dev_data:
+
+networks:
+  wazmeow-dev-network:
+    driver: bridge

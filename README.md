@@ -1,430 +1,179 @@
-# WazMeow - API REST para WhatsApp
+# WazMeow - WhatsApp Session Management API
 
-Uma API REST completa para gerenciar sessões do WhatsApp usando Go e a biblioteca whatsmeow.
+Uma API REST limpa e focada exclusivamente no gerenciamento de múltiplas sessões do WhatsApp, construída com Go e seguindo padrões idiomáticos.
 
-## 🚀 Funcionalidades
+## 🎯 Características
 
-- ✅ Criar e gerenciar múltiplas sessões do WhatsApp
-- ✅ Autenticação via QR Code
-- ✅ Emparelhamento por telefone
-- ✅ Configuração de proxy
-- ✅ Conexão e desconexão de sessões
-- ✅ Logout de sessões
-- ✅ Listagem e informações detalhadas das sessões
-- ✅ Event handlers completos para mensagens, presença, confirmações de leitura
-- ✅ Reconexão automática de sessões na inicialização
-- ✅ Gerenciamento de mídia (imagens, áudios, vídeos, documentos)
-- ✅ Sistema completo de webhooks com payload bruto
-- ✅ Filtros de eventos configuráveis
-- ✅ Sistema de retry e circuit breaker
-- ✅ Rate limiting por sessão
-- ✅ Métricas de performance
-- ✅ Graceful shutdown com desconexão de todas as sessões
+- **Foco Exclusivo**: Gerenciamento de múltiplas sessões WhatsApp via API REST
+- **Arquitetura Limpa**: Separação clara de responsabilidades (Domain, Application, Infrastructure)
+- **Zero SQL**: Uso exclusivo do Bun ORM com query builder (sem SQL manual)
+- **CamelCase**: Consistência em Go, PostgreSQL e JSON
+- **Logging Estruturado**: Sistema centralizado com zerolog
+- **Chi Router**: Router HTTP rápido e idiomático
 
-## 🏗️ Tecnologias
-
-- **Backend**: Go 1.23+ com Clean Architecture
-- **ORM**: Bun ORM com auto-migrações
-- **Banco de dados**: PostgreSQL 15+
-- **WhatsApp**: whatsmeow library com event handlers completos
-- **HTTP Router**: Chi v5
-- **Containerização**: Docker & Docker Compose
-
-## ⚡ Comandos Rápidos (Makefile)
-
-O projeto inclui um Makefile com comandos para facilitar o desenvolvimento:
-
-```bash
-# Ver todos os comandos disponíveis
-make help
-
-# Setup completo para desenvolvimento
-make setup
-
-# Desenvolvimento rápido (Docker + app)
-make quick
-
-# Comandos básicos
-make build          # Compila a aplicação
-make run            # Compila e executa
-make dev            # Executa em modo desenvolvimento
-make test           # Executa testes
-make clean          # Limpa arquivos de build
-
-# Docker Compose
-make docker-up      # Inicia PostgreSQL, Redis, DBGate, Webhook Tester
-make docker-down    # Para todos os serviços
-make docker-logs    # Mostra logs dos serviços
-make status         # Status dos serviços
-
-# Qualidade de código
-make fmt            # Formata código
-make vet            # Executa go vet
-make lint           # Executa linter
-make check          # Formata + vet + testes
-
-# Documentação Swagger
-make swagger-gen    # Gera documentação Swagger
-make swagger-serve  # Gera documentação e inicia servidor
-make swagger-clean  # Remove arquivos de documentação
-```
-
-## 📱 Implementação WhatsApp
-
-A implementação do WhatsApp foi baseada no arquivo de referência `@reference/wuzapi/wmiau.go` e inclui:
-
-### 🔧 Componentes Principais
-
-- **WhatsAppClient**: Wrapper completo do cliente whatsmeow com event handlers
-- **SessionManager**: Gerenciador de sessões ativas com thread-safety
-- **ClientFactory**: Factory para criação e configuração de clientes
-- **Event Handlers**: Tratamento completo de eventos do WhatsApp
-
-### 📨 Eventos Suportados
-
-- **Conexão**: Connected, Disconnected, LoggedOut
-- **Autenticação**: QR Code generation, PairSuccess
-- **Mensagens**: Recebimento de mensagens de texto e mídia
-- **Confirmações**: Read receipts, delivery confirmations
-- **Presença**: Online/offline status, chat presence
-- **Mídia**: Processamento de imagens, áudios, vídeos e documentos
-
-### 🔄 Funcionalidades Avançadas
-
-- **Reconexão Automática**: Sessões conectadas são automaticamente reconectadas na inicialização
-- **Graceful Shutdown**: Desconexão limpa de todas as sessões ao parar o servidor
-- **Thread Safety**: Operações thread-safe em todos os componentes
-- **Error Handling**: Tratamento robusto de erros e recuperação de falhas
-
-## 📋 Endpoints da API
-
-| Método | Endpoint                                      | Descrição                                                                 |
-|--------|-----------------------------------------------|--------------------------------------------------------------------------|
-| POST   | `/sessions/add`                               | Cria uma nova sessão do WhatsApp                                        |
-| GET    | `/sessions/list`                              | Lista todas as sessões ativas e registradas no sistema                  |
-| GET    | `/sessions/{sessionID}/info`                  | Retorna as informações detalhadas de uma sessão específica              |
-| DELETE | `/sessions/{sessionID}`                       | Remove permanentemente uma sessão existente do sistema                  |
-| POST   | `/sessions/{sessionID}/connect`               | Estabelece a conexão da sessão com o WhatsApp                           |
-| POST   | `/sessions/{sessionID}/logout`                | Faz logout da sessão do WhatsApp, encerrando a comunicação              |
-| GET    | `/sessions/{sessionID}/qr`                    | Gera e retorna o QR Code necessário para autenticar a sessão            |
-| POST   | `/sessions/{sessionID}/pairphone`             | Emparelha um telefone com a sessão                                      |
-| POST   | `/sessions/{sessionID}/proxy/set`             | Configura proxy para a sessão                                           |
-| GET    | `/health`                                     | Health check da API                                                      |
-
-### 🔗 Endpoints de Webhook
-
-| Método | Endpoint                                      | Descrição                                                                 |
-|--------|-----------------------------------------------|--------------------------------------------------------------------------|
-| POST   | `/sessions/{sessionID}/webhook`               | Configura webhook para receber eventos da sessão                        |
-| GET    | `/sessions/{sessionID}/webhook`               | Obtém configuração atual do webhook                                     |
-| PUT    | `/sessions/{sessionID}/webhook`               | Atualiza configuração do webhook (ativar/desativar)                     |
-| DELETE | `/sessions/{sessionID}/webhook`               | Remove configuração do webhook                                          |
-| POST   | `/sessions/{sessionID}/webhook/test`          | Testa conectividade do webhook                                          |
-| GET    | `/webhook/events`                             | Lista eventos suportados e grupos disponíveis                          |
-
-## 🔗 Sistema de Webhooks
-
-O WazMeow possui um sistema completo de webhooks que permite receber eventos do WhatsApp em tempo real.
-
-### ✨ Características
-
-- **Payload Bruto**: Eventos enviados exatamente como vêm do whatsmeow
-- **Filtros Configuráveis**: Escolha quais eventos receber
-- **Sistema de Retry**: Tentativas automáticas com backoff exponencial
-- **Circuit Breaker**: Proteção contra URLs com falhas consecutivas
-- **Rate Limiting**: Controle de taxa por sessão
-- **Métricas**: Monitoramento completo de performance
-
-### 📝 Configuração Rápida
-
-```bash
-# Configurar webhook para receber todos os eventos
-curl -X POST http://localhost:8080/sessions/minha-sessao/webhook \
-  -H "Content-Type: application/json" \
-  -d '{
-    "webhook": "http://localhost:8090/webhook",
-    "events": ["*"]
-  }'
-```
-
-### 🧪 Testando Webhooks
-
-O ambiente de desenvolvimento inclui um webhook-tester para facilitar os testes:
-
-```bash
-# Iniciar o ambiente de desenvolvimento
-docker-compose up -d
-
-# O webhook-tester estará disponível em:
-# http://localhost:8090
-```
-
-**URLs úteis para desenvolvimento:**
-- **Webhook Tester**: http://localhost:8090 (para testar webhooks)
-- **DBGate**: http://localhost:3000 (administração de banco)
-- **WazMeow API**: http://localhost:8080 (API principal)
-
-### 📋 Eventos Disponíveis
-
-- **Conexão**: `connected`, `disconnected`, `logged_out`, `qr`, `pair_success`
-- **Mensagens**: `message`, `receipt`
-- **Presença**: `presence`, `chatpresence`
-- **Grupos**: `groupinfo`, `joinedgroup`
-- **Mídia**: `picture`
-- **Chamadas**: `calloffer`, `callaccept`, `callterminate`
-
-### 📖 Documentação Completa
-
-Para documentação detalhada sobre webhooks, consulte: [docs/webhooks.md](docs/webhooks.md)
-
-Para exemplo de implementação, veja: [examples/webhook_server.js](examples/webhook_server.js)
-
-## 📚 Documentação Swagger
-
-A API WazMeow inclui documentação Swagger completa e interativa para todos os endpoints.
-
-### 🌐 Acessar Documentação
-
-1. **Inicie o servidor**:
-   ```bash
-   go run cmd/server/main.go
-   ```
-
-2. **Acesse a interface Swagger UI**:
-   ```
-   http://localhost:8080/swagger/
-   ```
-
-### 🔧 Configuração de Host
-
-O WazMeow automaticamente configura o host do Swagger baseado na variável `SERVER_HOST`:
-
-#### 📋 Desenvolvimento Local
-```env
-# .env
-SERVER_HOST=0.0.0.0
-SERVER_PORT=8080
-```
-**Swagger será acessível em**: `http://localhost:8080/swagger/`
-
-#### 🌐 Produção com Domínio
-```env
-# .env
-SERVER_HOST=meudominio.com
-SERVER_PORT=8080
-```
-**Swagger será acessível em**: `https://meudominio.com/swagger/`
-
-#### ⚙️ Host Específico para Swagger (Opcional)
-Se você precisar de um host diferente apenas para o Swagger:
-```env
-# .env
-SERVER_HOST=0.0.0.0
-SWAGGER_HOST=api.meudominio.com
-```
-
-### 🔧 Gerar Documentação
-
-Para gerar ou atualizar a documentação Swagger:
-
-```bash
-# Usando o script
-./scripts/generate-docs.sh
-
-# Ou usando o Makefile
-make swagger-gen
-
-# Ou manualmente
-swag init -g cmd/server/main.go -o docs/ --parseDependency --parseInternal
-```
-
-### 📋 Comandos Make Disponíveis
-
-```bash
-make swagger-gen     # Gera documentação Swagger
-make swagger-serve   # Gera documentação e inicia servidor
-make swagger-clean   # Remove arquivos de documentação gerados
-```
-
-### 📖 Funcionalidades da Documentação
-
-- ✅ **Interface Interativa**: Teste todos os endpoints diretamente no navegador
-- ✅ **Esquemas Completos**: Documentação detalhada de todos os DTOs e entidades
-- ✅ **Exemplos de Uso**: Exemplos práticos para cada endpoint
-- ✅ **Validações**: Documentação de todas as validações de entrada
-- ✅ **Códigos de Resposta**: Documentação completa de respostas de sucesso e erro
-- ✅ **Tags Organizadas**: Endpoints organizados por funcionalidade (sessions, messages, health)
-
-### 🔗 Endpoints Documentados
-
-- **Sessions**: Criação, listagem, conexão, logout, QR code, emparelhamento, proxy
-- **Messages**:
-  - **Básicas**: Texto, mídia genérica
-  - **Específicas**: Imagem, áudio, vídeo, documento, sticker
-  - **Interativas**: Localização, contato, botões, lista, enquete
-  - **Operações**: Editar, deletar, reagir
-- **Health**: Verificação de saúde da API
-
-## 🛠️ Instalação e Execução
-
-### Pré-requisitos
-
-- Go 1.23 ou superior
-- PostgreSQL 15+
-- Docker (opcional, para desenvolvimento)
-
-### Instalação
-
-1. Clone o repositório:
-```bash
-git clone <repository-url>
-cd wazmeow
-```
-
-2. Instale as dependências:
-```bash
-go mod tidy
-```
-
-3. Execute o servidor:
-```bash
-go run cmd/server/main.go
-```
-
-O servidor será iniciado na porta 8080 por padrão.
-
-### Variáveis de Ambiente
-
-- `PORT`: Porta do servidor (padrão: 8080)
-- `LOG_LEVEL`: Nível de log (DEBUG, INFO, WARN, ERROR - padrão: INFO)
-- `DATA_DIR`: Diretório para armazenar dados (padrão: ./data)
-
-## 📖 Exemplos de Uso
-
-### Criar uma nova sessão
-
-```bash
-curl -X POST http://localhost:8080/sessions/add \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Minha Sessão"}'
-```
-
-### Listar todas as sessões
-
-```bash
-curl http://localhost:8080/sessions/list
-```
-
-### Obter QR Code para autenticação
-
-```bash
-curl http://localhost:8080/sessions/{sessionID}/qr
-```
-
-### Conectar uma sessão
-
-```bash
-curl -X POST http://localhost:8080/sessions/{sessionID}/connect
-```
-
-### Emparelhar telefone
-
-```bash
-curl -X POST http://localhost:8080/sessions/{sessionID}/pairphone \
-  -H "Content-Type: application/json" \
-  -d '{"phone": "+5511999999999"}'
-```
-
-### Configurar proxy
-
-```bash
-curl -X POST http://localhost:8080/sessions/{sessionID}/proxy/set \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "http",
-    "host": "proxy.example.com",
-    "port": 8080,
-    "username": "user",
-    "password": "pass"
-  }'
-```
-
-### Fazer logout
-
-```bash
-curl -X POST http://localhost:8080/sessions/{sessionID}/logout
-```
-
-### Remover sessão
-
-```bash
-curl -X DELETE http://localhost:8080/sessions/{sessionID}
-```
-
-## 📁 Estrutura do Projeto
+## 🏗️ Arquitetura
 
 ```
 wazmeow/
-├── cmd/
-│   └── server/
-│       └── main.go              # Ponto de entrada da aplicação
+├── cmd/server/main.go              # Entry point
 ├── internal/
-│   ├── http/
-│   │   ├── handlers/
-│   │   │   └── session_handler.go  # Handlers HTTP
-│   │   └── router.go            # Configuração das rotas
-│   ├── models/
-│   │   └── session.go           # Modelos de dados
-│   └── services/
-│       └── session_service.go   # Lógica de negócio
+│   ├── config/                     # Configurações
+│   ├── domain/
+│   │   ├── entities/               # Entidades de domínio
+│   │   ├── repositories/           # Interfaces de repositório
+│   │   └── services/               # Interfaces de serviços
+│   ├── application/
+│   │   ├── dto/                    # Request/Response DTOs
+│   │   ├── usecases/               # Use cases
+│   │   └── handlers/               # HTTP handlers
+│   └── infra/
+│       ├── database/               # Bun ORM + PostgreSQL
+│       ├── whatsapp/               # Cliente WhatsApp
+│       └── http/                   # Servidor HTTP
 ├── pkg/
-│   └── logger/
-│       └── logger.go            # Logger personalizado
-├── go.mod                       # Dependências do Go
-└── README.md                    # Documentação
+│   └── logger/                     # Logger centralizado
+└── go.mod
 ```
 
-## 🔧 Tecnologias Utilizadas
+## 📋 Entidade Session
 
-- **Go 1.21**: Linguagem de programação
-- **Chi Router**: Roteador HTTP leve e rápido
-- **WhatsApp Web Multi-Device**: Biblioteca whatsmeow
-- **SQLite**: Banco de dados para armazenar sessões
-- **UUID**: Geração de identificadores únicos
+```go
+type Session struct {
+    ID           string                 // UUID único
+    Name         string                 // Nome da sessão
+    Status       SessionStatus          // disconnected|connecting|connected
+    Phone        string                 // Número de telefone (opcional)
+    DeviceJID    string                 // JID do dispositivo WhatsApp
+    ProxyConfig  *ProxyConfig          // Configuração de proxy
+    WebhookURL   string                 // URL do webhook para eventos
+    Events       string                 // Eventos subscritos
+    CreatedAt    time.Time             // Data de criação
+    UpdatedAt    time.Time             // Data de atualização
+}
+```
 
-## 📝 Formato das Respostas
+## 🛣️ Endpoints da API
 
-Todas as respostas da API seguem o formato padrão:
+| Método | Endpoint                                      | Descrição                                                                 |
+|--------|-----------------------------------------------|--------------------------------------------------------------------------|
+| POST   | `/api/v1/sessions/add`                        | Cria uma nova sessão do WhatsApp                                        |
+| GET    | `/api/v1/sessions/list`                       | Lista todas as sessões registradas                                      |
+| GET    | `/api/v1/sessions/{sessionID}/info`           | Retorna informações detalhadas de uma sessão                            |
+| DELETE | `/api/v1/sessions/{sessionID}`                | Remove permanentemente uma sessão                                        |
+| POST   | `/api/v1/sessions/{sessionID}/connect`        | Estabelece conexão da sessão com o WhatsApp                             |
+| POST   | `/api/v1/sessions/{sessionID}/logout`         | Faz logout da sessão do WhatsApp                                        |
+| GET    | `/api/v1/sessions/{sessionID}/qr`             | Gera e retorna o QR Code para autenticação                              |
+| POST   | `/api/v1/sessions/{sessionID}/pairphone`      | Emparelha um telefone com a sessão                                      |
+| POST   | `/api/v1/sessions/{sessionID}/proxy/set`      | Configura proxy para a sessão                                           |
+
+## 🚀 Configuração
+
+### Variáveis de Ambiente
+
+```bash
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=wazmeow
+DB_PASSWORD=password
+DB_NAME=wazmeow
+DB_SSLMODE=disable
+DB_DEBUG=false
+
+# Server
+SERVER_HOST=0.0.0.0
+SERVER_PORT=8080
+
+# WhatsApp
+WA_DEBUG=false
+WA_OS_NAME=Mac OS 10
+
+# Logging
+LOG_LEVEL=info
+LOG_FORMAT=console
+```
+
+### Banco de Dados
+
+O sistema usa PostgreSQL com uma única tabela `Sessions` em camelCase:
+
+```sql
+CREATE TABLE Sessions (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'disconnected',
+    phone VARCHAR(20),
+    deviceJID VARCHAR(255),
+    proxyEnabled BOOLEAN DEFAULT FALSE,
+    proxyURL TEXT,
+    webhookURL TEXT,
+    events TEXT,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+## 🔧 Desenvolvimento
+
+### Pré-requisitos
+
+- Go 1.23+
+- PostgreSQL 12+
+
+### Executar
+
+```bash
+# Instalar dependências
+go mod tidy
+
+# Executar servidor
+go run cmd/server/main.go
+```
+
+### Estrutura de Resposta
+
+Todas as respostas seguem o padrão:
 
 ```json
 {
   "success": true,
-  "message": "Mensagem descritiva",
-  "data": {}, // Dados da resposta (opcional)
-  "error": "" // Mensagem de erro (opcional)
+  "message": "Operação realizada com sucesso",
+  "data": { ... },
+  "error": null
 }
 ```
 
-## 🚨 Tratamento de Erros
+## 🎨 Padrões Utilizados
 
-A API retorna códigos de status HTTP apropriados:
+- **Domain-Driven Design**: Separação clara entre domínio, aplicação e infraestrutura
+- **Repository Pattern**: Abstração da camada de dados
+- **Use Case Pattern**: Lógica de negócio encapsulada
+- **Dependency Injection**: Inversão de dependências
+- **Clean Architecture**: Arquitetura limpa e testável
 
-- `200`: Sucesso
-- `400`: Erro de validação ou dados inválidos
-- `404`: Recurso não encontrado
-- `500`: Erro interno do servidor
+## 📦 Tecnologias
 
-## 🔒 Segurança
+- **Go 1.23**: Linguagem principal
+- **Chi Router**: Router HTTP
+- **Bun ORM**: ORM com query builder (zero SQL)
+- **PostgreSQL**: Banco de dados
+- **Zerolog**: Logging estruturado
+- **WhatsApp Web API**: Integração WhatsApp
 
-- Validação de entrada em todos os endpoints
-- Tratamento seguro de erros
-- Logs estruturados para auditoria
-- Suporte a CORS configurável
+## 🔍 Health Check
 
-## 📞 Suporte
+```bash
+curl http://localhost:8080/health
+```
 
-Para dúvidas ou problemas, abra uma issue no repositório do projeto.
+Resposta:
+```json
+{
+  "status": "ok",
+  "service": "wazmeow"
+}
+```
 
-## 📄 Licença
+## 📝 Licença
 
-Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.
+Este projeto está sob a licença MIT.

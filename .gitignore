@@ -1,85 +1,66 @@
-# Ignorar a pasta reference
-reference/
-
-# Binário da aplicação
-wazmeow
-
-# Configurações locais
-.augment/
-Makefile
-
-# Go específicos
-bin/
-vendor/
+# Binaries for programs and plugins
 *.exe
+*.exe~
 *.dll
 *.so
 *.dylib
+bin/
+dist/
+
+# Test binary, built with `go test -c`
 *.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
 *.out
-*.cover
-coverage.txt
-coverage.html
-coverage.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
 go.work
-go.work.sum
 
-# IDEs e Editores
-.vscode/
-.idea/
-*.sublime-*
-.vim/
-.nvim/
-*.swp
-*~
-
-# Arquivos temporários e de sistema
-*.log
-*.tmp
-.DS_Store
-Thumbs.db
-*.pid
-*.sock
-
-# Docker e Containers
-.dockerignore
-docker-compose.override.yml
-.docker/
-
-# Configurações e Secrets
+# Environment variables
 .env
 .env.local
 .env.production
-.env.staging
-local.settings.json
-config/local.json
-*.pem
-*.key
-*.crt
 
-# Dados da aplicação
-data/
-storage/
-uploads/
-sessions/
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
 logs/
+
+# Database files
 *.db
 *.sqlite
 *.sqlite3
 
-# Documentação gerada (manter apenas arquivos manuais)
-docs/docs.go
-docs/swagger.json
-docs/swagger.yaml
+# Temporary files
+tmp/
+temp/
 
-# Deploy e CI/CD
-.terraform/
-*.tfstate
-*.tfstate.backup
-.kube/
-.helm/
+# Air (hot reload) files
+.air.toml
+tmp/
 
-# Backup e arquivos temporários
-*.bak
-*.backup
-*.orig
+# Coverage files
+coverage.out
+coverage.html
+
+# Build artifacts
+build/
+target/
