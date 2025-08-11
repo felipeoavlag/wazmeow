@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+// =============================================================================
+// WEBHOOK METRICS
+// =============================================================================
+
 // WebhookMetrics coleta métricas do sistema de webhooks
 type WebhookMetrics struct {
 	// Contadores

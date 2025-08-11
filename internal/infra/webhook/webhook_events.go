@@ -12,6 +12,10 @@ import (
 	"go.mau.fi/whatsmeow/types/events"
 )
 
+// =============================================================================
+// EVENT FILTERING AND VALIDATION
+// =============================================================================
+
 // EventFilter filtra eventos baseado na configuração da sessão
 type EventFilter struct{}
 
@@ -222,6 +226,10 @@ func (ef *EventFilter) ValidateEvents(eventsStr string) error {
 	return nil
 }
 
+// =============================================================================
+// WEBHOOK PAYLOADS AND SERIALIZATION
+// =============================================================================
+
 // WebhookPayload representa o payload completo de um webhook
 type WebhookPayload struct {
 	Event     string                 `json:"event"`
@@ -237,6 +245,17 @@ type Metadata struct {
 	Source    string `json:"source"`
 	EventID   string `json:"event_id"`
 	Timestamp int64  `json:"timestamp"`
+}
+
+// WebhookEvent representa um evento a ser enviado via webhook
+type WebhookEvent struct {
+	ID        string                 `json:"id"`
+	Type      string                 `json:"type"`
+	SessionID string                 `json:"session_id"`
+	Timestamp int64                  `json:"timestamp"`
+	Data      map[string]interface{} `json:"data"`
+	URL       string                 `json:"-"` // URL do webhook (não serializada)
+	Retries   int                    `json:"-"` // Número de tentativas (não serializada)
 }
 
 // EventSerializer serializa eventos do whatsmeow para JSON
