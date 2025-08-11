@@ -77,12 +77,8 @@ func (c *BunConnection) Health(ctx context.Context) error {
 		return fmt.Errorf("conexão Bun não inicializada")
 	}
 
-	// Testar conexão com query simples
-	var result int
-	err := c.DB.NewSelect().
-		ColumnExpr("1").
-		Scan(ctx, &result)
-
+	// Usar ping nativo do Bun - mais direto e eficiente
+	err := c.DB.PingContext(ctx)
 	if err != nil {
 		return fmt.Errorf("health check falhou: %w", err)
 	}

@@ -25,20 +25,20 @@ type Session struct {
 	Phone string `json:"phone,omitempty" example:"+5511999999999"`
 
 	// JID do dispositivo WhatsApp (opcional)
-	DeviceJID string `json:"device_jid,omitempty" example:"5511999999999.0:1@s.whatsapp.net"`
+	DeviceJID string `json:"deviceJID,omitempty" example:"5511999999999.0:1@s.whatsapp.net"`
 
 	// Configuração de proxy (opcional)
-	ProxyConfig *ProxyConfig `json:"proxy_config,omitempty"`
+	ProxyConfig *ProxyConfig `json:"proxyConfig,omitempty"`
 
 	// URL do webhook para receber eventos (opcional)
-	WebhookURL string `json:"webhook_url,omitempty" example:"https://example.com/webhook"`
+	WebhookURL string `json:"webhookURL,omitempty" example:"https://example.com/webhook"`
 	// Eventos subscritos separados por vírgula (opcional)
 	Events string `json:"events,omitempty" example:"message,status"`
 
 	// Data de criação da sessão
-	CreatedAt time.Time `json:"created_at" example:"2023-08-19T10:30:00Z"`
+	CreatedAt time.Time `json:"createdAt" example:"2023-08-19T10:30:00Z"`
 	// Data da última atualização
-	UpdatedAt time.Time `json:"updated_at" example:"2023-08-19T10:30:00Z"`
+	UpdatedAt time.Time `json:"updatedAt" example:"2023-08-19T10:30:00Z"`
 }
 
 // ProxyConfig representa a configuração de proxy

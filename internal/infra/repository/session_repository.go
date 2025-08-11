@@ -106,7 +106,7 @@ func (r *BunSessionRepository) List() ([]*entity.Session, error) {
 	var sessionModels []*models.SessionModel
 	err := r.db.NewSelect().
 		Model(&sessionModels).
-		Order("created_at DESC").
+		Order("createdAt DESC").
 		Scan(ctx)
 
 	if err != nil {

@@ -45,19 +45,11 @@ func CreateTablesFromModels(ctx context.Context, db *bun.DB) error {
 func ValidateSchema(ctx context.Context, db *bun.DB) error {
 	logger.Info("🔍 Validando schema contra models...")
 
-	// Verificar se tabela sessions existe
-	var exists bool
-	err := db.NewSelect().
-		ColumnExpr("EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'sessions')").
-		Scan(ctx, &exists)
-
+	// Tentar criar tabelas - se existirem, será ignorado por IfNotExists()
+	// Esta abordagem é mais robusta e não requer SQL raw
+	err := CreateTablesFromModels(ctx, db)
 	if err != nil {
-		return fmt.Errorf("erro ao verificar tabela sessions: %w", err)
-	}
-
-	if !exists {
-		logger.Info("⚠️ Tabela sessions não existe, criando automaticamente...")
-		return CreateTablesFromModels(ctx, db)
+		return fmt.Errorf("erro ao validar/criar schema: %w", err)
 	}
 
 	logger.Info("✅ Schema validado - todas as tabelas existem!")
@@ -115,26 +107,30 @@ func RecreateAllTables(ctx context.Context, db *bun.DB) error {
 	return nil
 }
 
-// GetSchemaStatus retorna informações sobre o status do schema
+// GetSchemaStatus retorna informações sobre o status do schema usando Bun nativo
 func GetSchemaStatus(ctx context.Context, db *bun.DB) (*SchemaStatus, error) {
 	status := &SchemaStatus{
 		Tables: make(map[string]bool),
 	}
 
-	// Lista das tabelas esperadas
-	expectedTables := []string{"sessions"} // Adicionar outras conforme necessário
+	// Lista de models esperados (mais type-safe que strings)
+	expectedModels := []struct {
+		name  string
+		model interface{}
+	}{
+		{"sessions", (*models.SessionModel)(nil)},
+		// TODO: Adicionar outros models aqui conforme necessário
+	}
 
-	for _, tableName := range expectedTables {
-		var exists bool
-		err := db.NewSelect().
-			ColumnExpr("EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = ?)", tableName).
-			Scan(ctx, &exists)
+	for _, modelInfo := range expectedModels {
+		// Tentar fazer uma query count simples na tabela
+		// Se a tabela não existir, retornará erro
+		_, err := db.NewSelect().
+			Model(modelInfo.model).
+			Count(ctx)
 
-		if err != nil {
-			return nil, fmt.Errorf("erro ao verificar tabela %s: %w", tableName, err)
-		}
-
-		status.Tables[tableName] = exists
+		exists := err == nil
+		status.Tables[modelInfo.name] = exists
 		status.TotalTables++
 		if exists {
 			status.ExistingTables++
