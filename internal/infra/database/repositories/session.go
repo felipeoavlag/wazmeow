@@ -59,6 +59,26 @@ func (r *sessionRepository) GetByID(ctx context.Context, id string) (*entities.S
 	return model.ToEntity(), nil
 }
 
+// GetByDeviceJID retrieves a session by its device JID using Bun query builder
+func (r *sessionRepository) GetByDeviceJID(ctx context.Context, deviceJID string) (*entities.Session, error) {
+	model := &models.SessionModel{}
+
+	err := r.db.NewSelect().
+		Model(model).
+		Where("deviceJID = ?", deviceJID).
+		Scan(ctx)
+
+	if err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			return nil, nil
+		}
+		logger.Error().Err(err).Str("deviceJID", deviceJID).Msg("Failed to get session by deviceJID")
+		return nil, err
+	}
+
+	return model.ToEntity(), nil
+}
+
 // GetAll retrieves all sessions using Bun query builder
 func (r *sessionRepository) GetAll(ctx context.Context) ([]*entities.Session, error) {
 	var models []*models.SessionModel
@@ -78,6 +98,29 @@ func (r *sessionRepository) GetAll(ctx context.Context) ([]*entities.Session, er
 		sessions[i] = model.ToEntity()
 	}
 
+	return sessions, nil
+}
+
+// GetConnectedSessions retrieves all sessions with connected status using Bun query builder
+func (r *sessionRepository) GetConnectedSessions(ctx context.Context) ([]*entities.Session, error) {
+	var models []*models.SessionModel
+
+	err := r.db.NewSelect().
+		Model(&models).
+		Where("status = ?", "connected").
+		Scan(ctx)
+
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to get connected sessions")
+		return nil, err
+	}
+
+	sessions := make([]*entities.Session, len(models))
+	for i, model := range models {
+		sessions[i] = model.ToEntity()
+	}
+
+	logger.Debug().Int("count", len(sessions)).Msg("Retrieved connected sessions")
 	return sessions, nil
 }
 
@@ -132,27 +175,4 @@ func (r *sessionRepository) UpdateStatus(ctx context.Context, id string, status 
 
 	logger.Debug().Str("sessionId", id).Str("status", string(status)).Msg("Session status updated successfully")
 	return nil
-}
-
-// GetConnectedSessions retrieves all connected sessions using Bun query builder
-func (r *sessionRepository) GetConnectedSessions(ctx context.Context) ([]*entities.Session, error) {
-	var models []*models.SessionModel
-
-	err := r.db.NewSelect().
-		Model(&models).
-		Where("status = ?", string(entities.StatusConnected)).
-		Order("createdAt DESC").
-		Scan(ctx)
-
-	if err != nil {
-		logger.Error().Err(err).Msg("Failed to get connected sessions")
-		return nil, err
-	}
-
-	sessions := make([]*entities.Session, len(models))
-	for i, model := range models {
-		sessions[i] = model.ToEntity()
-	}
-
-	return sessions, nil
 }

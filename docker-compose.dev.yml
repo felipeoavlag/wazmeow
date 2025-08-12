@@ -12,8 +12,8 @@ services:
     container_name: wazmeow-postgres-dev
     environment:
       POSTGRES_DB: wazmeow
-      POSTGRES_USER: wazmeow
-      POSTGRES_PASSWORD: wazmeow123
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
     volumes:
@@ -36,8 +36,8 @@ services:
       CONNECTIONS: con1
       LABEL_con1: WazMeow PostgreSQL (Dev)
       SERVER_con1: postgres
-      USER_con1: wazmeow
-      PASSWORD_con1: wazmeow123
+      USER_con1: postgres
+      PASSWORD_con1: password
       PORT_con1: 5432
       ENGINE_con1: postgres@dbgate-plugin-postgres
       DATABASE_con1: wazmeow

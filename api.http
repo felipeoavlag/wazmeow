@@ -1,0 +1,117 @@
+# WazMeow API - Testes HTTP
+# Use com VS Code REST Client ou JetBrains HTTP Client
+# Ajuste a baseUrl conforme sua configuração
+
+@baseUrl = http://localhost:8080
+@sessionID = 9865971b-45ed-427f-9ecf-e64e6ff4efaf
+@phone = +5511999999999
+
+### Health Check
+GET {{baseUrl}}/health
+
+### Root endpoint
+GET {{baseUrl}}/
+
+### 1. Criar nova sessão
+POST {{baseUrl}}/sessions/add
+Content-Type: application/json
+
+{
+  "name": "{{sessionID}}",
+  "webhookURL": "https://webhook.site/your-unique-url",
+  "events": "message,connected,disconnected",
+  "proxyConfig": null
+}
+
+### 2. Listar todas as sessões
+GET {{baseUrl}}/sessions/list
+
+### 3. Obter informações da sessão
+GET {{baseUrl}}/sessions/{{sessionID}}/info
+
+### 4. Conectar sessão (inicia processo de autenticação)
+POST {{baseUrl}}/sessions/{{sessionID}}/connect
+Content-Type: application/json
+
+{
+  "immediate": true,
+  "events": "message,connected,disconnected"
+}
+
+### 5. Obter QR Code para autenticação
+GET {{baseUrl}}/sessions/{{sessionID}}/qr
+
+### 6. Emparelhar telefone (alternativa ao QR)
+POST {{baseUrl}}/sessions/{{sessionID}}/pairphone
+Content-Type: application/json
+
+{
+  "phone": "{{phone}}"
+}
+
+### 7. Fazer logout da sessão
+POST {{baseUrl}}/sessions/{{sessionID}}/logout
+
+### 8. Configurar proxy (opcional)
+POST {{baseUrl}}/sessions/{{sessionID}}/proxy/set
+Content-Type: application/json
+
+{
+  "enabled": true,
+  "proxyURL": "http://usuario:senha@proxy.exemplo.com:3128"
+}
+
+### 9. Desabilitar proxy
+POST {{baseUrl}}/sessions/{{sessionID}}/proxy/set
+Content-Type: application/json
+
+{
+  "enabled": false,
+  "proxyURL": ""
+}
+
+### 10. Remover sessão permanentemente
+DELETE {{baseUrl}}/sessions/{{sessionID}}
+
+###
+### FLUXO TÍPICO DE USO:
+###
+### 1. Criar sessão (POST /sessions/add)
+### 2. Conectar sessão (POST /sessions/{id}/connect) - QR aparece automaticamente no terminal!
+### 3. Escanear QR no terminal com WhatsApp OU usar pair phone
+### 4. Verificar status (GET /sessions/{id}/info) para confirmar conexão
+### 5. Usar sessão conectada para envio/recebimento
+### 6. Logout quando necessário (POST /sessions/{id}/logout)
+### 7. Remover sessão se não precisar mais (DELETE /sessions/{id})
+###
+### IMPORTANTE: O QR code aparece automaticamente no terminal quando você conecta!
+### Não precisa chamar GET /qr separadamente - ele é exibido na conexão.
+###
+
+### Exemplo com sessão específica
+@testSessionID = sessao-exemplo-123
+
+### Criar sessão de exemplo
+POST {{baseUrl}}/sessions/add
+Content-Type: application/json
+
+{
+  "name": "{{testSessionID}}",
+  "webhookURL": "",
+  "events": "message"
+}
+
+### Conectar sessão de exemplo
+POST {{baseUrl}}/sessions/{{testSessionID}}/connect
+Content-Type: application/json
+
+{
+  "immediate": true
+}
+
+### Ver QR da sessão de exemplo
+GET {{baseUrl}}/sessions/{{testSessionID}}/qr
+
+### Info da sessão de exemplo
+GET {{baseUrl}}/sessions/{{testSessionID}}/info
+

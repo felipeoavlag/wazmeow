@@ -14,8 +14,14 @@ type SessionRepository interface {
 	// GetByID retrieves a session by its ID
 	GetByID(ctx context.Context, id string) (*entities.Session, error)
 
+	// GetByDeviceJID retrieves a session by its device JID
+	GetByDeviceJID(ctx context.Context, deviceJID string) (*entities.Session, error)
+
 	// GetAll retrieves all sessions
 	GetAll(ctx context.Context) ([]*entities.Session, error)
+
+	// GetConnectedSessions retrieves all sessions with connected status
+	GetConnectedSessions(ctx context.Context) ([]*entities.Session, error)
 
 	// Update updates an existing session
 	Update(ctx context.Context, session *entities.Session) error
@@ -25,7 +31,4 @@ type SessionRepository interface {
 
 	// UpdateStatus updates only the status of a session
 	UpdateStatus(ctx context.Context, id string, status entities.SessionStatus) error
-
-	// GetConnectedSessions retrieves all connected sessions
-	GetConnectedSessions(ctx context.Context) ([]*entities.Session, error)
 }

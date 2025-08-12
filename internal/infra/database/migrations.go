@@ -66,6 +66,18 @@ func createIndexes(ctx context.Context, db *bun.DB) error {
 		return err
 	}
 
+	// Create index on Sessions.deviceJID for better performance on device lookups
+	_, err = db.NewCreateIndex().
+		Model((*models.SessionModel)(nil)).
+		Index("idx_sessions_device_jid").
+		Column("deviceJID").
+		IfNotExists().
+		Exec(ctx)
+	if err != nil {
+		logger.Error().Err(err).Msg("Failed to create deviceJID index")
+		return err
+	}
+
 	logger.Debug().Msg("Database indexes created successfully")
 	return nil
 }

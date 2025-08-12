@@ -16,6 +16,7 @@ import (
 	"wazmeow/internal/infra/database/repositories"
 	"wazmeow/internal/infra/http/routes"
 	"wazmeow/internal/infra/whatsapp"
+	"wazmeow/internal/infra/whatsapp/store"
 	"wazmeow/pkg/logger"
 )
 
@@ -32,11 +33,18 @@ func NewServer(cfg *config.Config, db *bun.DB, waStore interface{}) (*Server, er
 	sessionRepo := repositories.NewSessionRepository(db)
 
 	// Initialize WhatsApp store and service
-	whatsappStore, err := whatsapp.NewStoreContainer(cfg.Database)
+	whatsappStore, err := store.NewContainer(cfg.Database)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to initialize WhatsApp store")
 	}
-	whatsappService := whatsapp.NewService(sessionRepo, whatsappStore)
+	whatsappService := whatsapp.NewService(sessionRepo, whatsappStore, &cfg.WhatsApp)
+
+	// Initialize WhatsApp service and load sessions for auto-reconnect
+	ctx := context.Background()
+	if err := whatsappService.Initialize(ctx); err != nil {
+		logger.Error().Err(err).Msg("Failed to initialize WhatsApp service")
+		// Não é fatal - servidor pode continuar sem sessões carregadas
+	}
 
 	// Initialize use cases
 	createSessionUC := session.NewCreateSessionUseCase(sessionRepo)

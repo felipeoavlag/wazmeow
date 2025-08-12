@@ -38,8 +38,16 @@ type ServerConfig struct {
 
 // WhatsAppConfig holds WhatsApp configuration
 type WhatsAppConfig struct {
-	Debug  string
-	OSName string
+	Debug                string
+	OSName               string
+	MaxSessions          int
+	ConnectionTimeout    time.Duration
+	QRTimeout            time.Duration
+	ReconnectInterval    time.Duration
+	MaxReconnectAttempts int
+	PoolSize             int
+	PoolMaxIdle          int
+	PoolMaxLifetime      time.Duration
 }
 
 // LogConfig holds logging configuration
@@ -71,8 +79,16 @@ func Load() (*Config, error) {
 			ShutdownTimeout: getEnvAsDuration("SERVER_SHUTDOWN_TIMEOUT", 30*time.Second),
 		},
 		WhatsApp: WhatsAppConfig{
-			Debug:  getEnv("WA_DEBUG", ""),
-			OSName: getEnv("WA_OS_NAME", "Mac OS 10"),
+			Debug:                getEnv("WA_DEBUG", ""),
+			OSName:               getEnv("WA_OS_NAME", "Mac OS 10"),
+			MaxSessions:          getEnvAsInt("WA_MAX_SESSIONS", 100),
+			ConnectionTimeout:    getEnvAsDuration("WA_CONNECTION_TIMEOUT", 30*time.Second),
+			QRTimeout:            getEnvAsDuration("WA_QR_TIMEOUT", 5*time.Minute),
+			ReconnectInterval:    getEnvAsDuration("WA_RECONNECT_INTERVAL", 10*time.Second),
+			MaxReconnectAttempts: getEnvAsInt("WA_MAX_RECONNECT_ATTEMPTS", 5),
+			PoolSize:             getEnvAsInt("WA_POOL_SIZE", 50),
+			PoolMaxIdle:          getEnvAsInt("WA_POOL_MAX_IDLE", 10),
+			PoolMaxLifetime:      getEnvAsDuration("WA_POOL_MAX_LIFETIME", time.Hour),
 		},
 		Log: LogConfig{
 			Level:  getEnv("LOG_LEVEL", "info"),

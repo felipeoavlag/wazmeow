@@ -10,7 +10,7 @@ import (
 	"wazmeow/internal/config"
 	"wazmeow/internal/infra/database"
 	"wazmeow/internal/infra/http"
-	"wazmeow/internal/infra/whatsapp"
+	"wazmeow/internal/infra/whatsapp/store"
 	"wazmeow/pkg/logger"
 )
 
@@ -37,7 +37,7 @@ func main() {
 	}
 
 	// Initialize WhatsApp store container
-	waStore, err := whatsapp.NewStoreContainer(cfg.Database)
+	waStore, err := store.NewContainer(cfg.Database)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to initialize WhatsApp store")
 	}
